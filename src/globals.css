@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark light;
+  }
+}
+
+@layer utilities {
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+  .font-code {
+    font-family: var(--font-code);
+  }
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+
+  .site-prose {
+    @apply prose prose-headings:font-heading prose-neutral dark:prose-invert sm:prose-base lg:prose-lg xl:prose-xl 2xl:prose-2xl;
+  }
+}
