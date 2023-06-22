@@ -12,7 +12,7 @@ export default function Home() {
           <span className="text-green-500 dark:text-green-400">Dev</span>elopers
         </h1>
       </section>
-      <section className="site-prose mx-auto px-8 sm:px-16 my-12">
+      <section className="site-prose mx-auto px-8 sm:px-16 my-6 sm:my-12">
         <Intro />
       </section>
     </main>

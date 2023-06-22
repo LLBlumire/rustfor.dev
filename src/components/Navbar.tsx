@@ -5,7 +5,7 @@ export function Navbar() {
   return (
     <nav className="py-4 px-8 sm:py-8 sm:px-16">
       <ul className="flex flex-wrap gap-8 max-w-screen-2xl mx-auto">
-        <li>
+        <li className="flex-grow">
           <Link href="/" className="hover:underline flex gap-2 items-center">
             <Home />
             <span className="hidden sm:block">Home</span>
