@@ -1,5 +1,6 @@
 import "~/globals.css";
 import { Fira_Sans, Fira_Code, Atkinson_Hyperlegible } from "next/font/google";
+import { Navbar } from "~/components/Navbar";
 
 const sans = Fira_Sans({
   subsets: ["latin"],
@@ -33,7 +34,10 @@ export default function RootLayout({
       lang="en"
       className={`${sans.variable} ${code.variable} ${heading.variable}`}
     >
-      <body className="font-sans bg-neutral-100 dark:bg-neutral-800">
+      <body className="font-sans bg-neutral-100 dark:bg-neutral-800 flex flex-col min-h-[100dvh]">
+        <header className="bg-neutral-200 dark:bg-neutral-950">
+          <Navbar />
+        </header>
         {children}
       </body>
     </html>
