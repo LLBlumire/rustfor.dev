@@ -34,8 +34,8 @@ export default function RootLayout({
       lang="en"
       className={`${sans.variable} ${code.variable} ${heading.variable}`}
     >
-      <body className="font-sans bg-neutral-100 dark:bg-neutral-800 flex flex-col min-h-[100dvh]">
-        <header className="bg-neutral-200 dark:bg-neutral-950">
+      <body className="font-sans bg-neutral-200 dark:bg-neutral-800 flex flex-col min-h-[100dvh]">
+        <header className="bg-neutral-100 dark:bg-neutral-950">
           <Navbar />
         </header>
         {children}
