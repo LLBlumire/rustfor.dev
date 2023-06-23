@@ -39,6 +39,13 @@ load. I recommend you set your system default toolchain with:
 rustup default stable
 ```
 
+By default, rustup uses the `default` profile, which will install all of the
+components I listed above except for Rust Analyzer. You can remedy this with:
+
+```
+rustup component add rust-src rust-analyzer
+```
+
 Alternatively, you can create a `rust-toolchain.toml` in your project directory
 to specific a toolchain which will overwrite the system default chain for
 commands run in that directory.
@@ -48,13 +55,36 @@ commands run in that directory.
 
 [toolchain]
 channel = "1.70.0"
-components = [ "rust-analyzer" ]
+components = [ "rust-src", "rust-analyzer" ]
 ```
 
 If you are using Nix for reproducibility, which you should be if you're a
 company, have a look at [this example flake][rsnix]
-you can see more examples or learn about Nix on https://zero-to-nix.com/.
+you can see more examples or learn about Nix on https://zero-to-nix.com/. If
+you're not a company that needs reproducibility then please skip over that link
+before you fall down a software engineering rabbit hole. Do return to explore
+the rabbit hole later though, as it's quite a fun one.
+
+Once you've got your toolchain installed and configured, you should be able to
+run the following commands:
+
+```
+rustup --version
+rustc --version
+cargo --version
+cargo clippy --version
+cargo fmt --version
+rust-analyzer --version
+```
+
+If you don't get a sane output from any of those, please reread the lesson and
+check you didn't miss anything then file an [issue on github][ghi].
+
+If you do get a sane output from each of those commands, you have finished this
+lesson. Congratulations. Now it's time to do a lot of theory learning before you
+use any of the tools we've installed!
 
 [wslu]: https://apps.microsoft.com/store/detail/ubuntu/9PDXGNCFSCZV
 [wslf]: https://dev.to/bowmanjd/install-fedora-on-windows-subsystem-for-linux-wsl-4b26
 [rsnix]: https://github.com/DeterminateSystems/zero-to-nix/blob/main/nix/templates/dev/rust/flake.nix
+[ghi]: https://github.com/LLBlumire/rustfor.dev/issues
