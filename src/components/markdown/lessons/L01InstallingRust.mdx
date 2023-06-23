@@ -1,0 +1,60 @@
+# Lesson 1: Installing Rust
+
+There are three main pieces of software that are needed for developing Rust code.
+
+- `rustc` is the Rust language compiler. It turns `.rs` files into executables.
+- `cargo` is the Rust package manager. It downloads library dependencies and can
+  call `rustc` for you.
+- `rustup` is the rust toolchain manager, it installs the above components for
+  you, keeps them up to date, and can dynamically change your toolchain version
+  to comply with the version requirements of the project you are building.
+
+Those are mandatory to have a good development experience, but you probably also
+want the following.
+
+- `rustfmt` formats your code to comply with the format used by the standard
+  library. You can customise this format, but for the sake of everyone who has
+  to read your code please don't.
+- `rust-analyzer` is the Rust language server. This is used by your editor of
+  choice to provide you with inlay hints, error messages, code navigation, and
+  many other quality of life improvements.
+- `clippy` is a linter which can check your code for common bad practice
+  and likely errors. It is significantly more useful than the paperclip it is
+  named after.
+
+Fortunately, all of these tools can be installed by `rustup`, so you only need
+to install that and the rest can be bootstrapped from there.
+
+You can install this from your system package manager of choice, or you can
+follow the instructions on https://rustup.rs for your system.
+
+If you are using windows, I strongly recommend you install a WSL2 distribution
+and use that instead. I'm sure you can use google to figure out how to do this.
+Most WSL users are using [Ubuntu][wslu], I personally quite like [Fedora][wslf].
+
+Once you have rustup installed, you will need to chose a toolchain version to
+load. I recommend you set your system default toolchain with:
+
+```
+rustup default stable
+```
+
+Alternatively, you can create a `rust-toolchain.toml` in your project directory
+to specific a toolchain which will overwrite the system default chain for
+commands run in that directory.
+
+```toml
+# rust-toolchain.toml
+
+[toolchain]
+channel = "1.70.0"
+components = [ "rust-analyzer" ]
+```
+
+If you are using Nix for reproducibility, which you should be if you're a
+company, have a look at [this example flake][rsnix]
+you can see more examples or learn about Nix on https://zero-to-nix.com/.
+
+[wslu]: https://apps.microsoft.com/store/detail/ubuntu/9PDXGNCFSCZV
+[wslf]: https://dev.to/bowmanjd/install-fedora-on-windows-subsystem-for-linux-wsl-4b26
+[rsnix]: https://github.com/DeterminateSystems/zero-to-nix/blob/main/nix/templates/dev/rust/flake.nix
