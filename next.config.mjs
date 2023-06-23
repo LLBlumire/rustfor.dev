@@ -9,6 +9,7 @@ const nextConfig = {
 };
 
 const withMDX = nextMDX({
+  extension: /\.mdx?$/,
   remark: [remarkGfm],
   rehype: []
 });
