@@ -1,9 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    mdxRs: true,
+    mdxRs: false,
   },
 };
 
-const withMDX = require("@next/mdx")();
+const withMDX = require("@next/mdx")({
+  remark: [require("remark-gfm")],
+  rehype: []
+});
 module.exports = withMDX(nextConfig);
