@@ -3,6 +3,7 @@ import Lessons from "~/components/markdown/Lessons.mdx";
 
 const lessons = [
   { href: "/lessons/01-installing-rust", title: "Installing Rust" },
+  { href: "/lessons/02-move-and-copy", title: "Move and Copy" },
 ];
 
 export default function Page() {

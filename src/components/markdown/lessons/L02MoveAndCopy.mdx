@@ -1,0 +1,273 @@
+# Lesson 2: Move and Copy
+
+It is time for us to begin exploring the theory behind Rust, and what makes it
+tic.
+
+The first thing to understand is the two problems that Rust solves.
+
+ 1. Memory safety
+ 2. Thread safety
+
+These are two classes of error entirely presented by Rust design, and are
+significant problems to try and solve. Errors in these domains make up a huge
+share of some of the security vulnerabilities and major errors that have plagued
+software. Many errors would be prevented by Rusts language design, including but 
+not limited to:
+
+ - OpenSSL Heartbleed
+ - NetUSB run_init_netbus
+ - SecureTransfer goto fail
+ - GNUTLS goto cleanup
+ - SChannel Winshock
+ - JCE Bleichenbacher Attack
+ - glibc gethostby (GHOST)
+
+Now we've established that Rust is important, let's talk about the first step it
+takes to achieve this.
+
+The following is not Rust code you can compile, because im focusing on concepts
+not concretes, but consider the following.
+
+```
+function print_string(s) {
+    /* internals hidden */
+}
+
+function main() {
+    let my_string = "Hello";
+    print_string(my_string);
+    print_string(my_string);
+}
+```
+
+What would you expect the above code to do. For many languages the answer is
+"print Hello twice". Rust takes the more controversial answer of "not
+compiling". The following is an approximation of the error you would see if the
+above was real rust code.
+
+```
+error[E0382]: use of moved value: `my_string`
+ --> src/main.rs:8:18
+  |
+6 |     let my_string = "Hello";
+  |         --------- move occurs because `my_string` has type `String`, which does not implement the `Copy` trait
+7 |     print_string(my_string);
+  |                  --------- value moved here
+8 |     print_string(my_string);
+  |                  ^^^^^^^^^ value used here after move
+  |
+```
+
+This is because of the first and most critical thing to understand about Rust:
+move semantics.
+
+One of the steps Rust must take to ensure memory safety is to know exactly when
+every piece of data is destroyed. If you attempt to use memory after your
+program releases it to the operating system, you create a "use after free",
+this is undefined behaviour and may cause [nasal demons][ub].
+
+In order to do this, the Rust compiler meticulously tracks and enforces when
+all memory is acquired and released, when all values are created and destroyed.
+
+In Rust, values are dropped (and memory is released) when they go out of scope.
+This creates the natural follow up question of "what is a scope?" and "what
+scope is a value in?".
+
+## What is a scope?
+
+Scopes, tautologically for the purpose of our explanation here, is simply
+"the part of the code where one can access a variable". Practically, the
+question we must therefore ask is "what constrains a scope?".
+
+## What constrains a scope? A.K.A. what scope is a value in?
+
+Variables have their scope constrained to a "block". A block is a collection of
+statements enclosed by braces. In the example I gave earlier, there are two
+blocks, one for the `main` function, and one for the `print_string` function.
+
+In real Rust code, you can create blocks anywhere you like by sprinkling `{}`
+around the statements you want in the block. We aren't writing real Rust code
+yet though, so let's not worry about that yet.
+
+## Move Semantics
+
+So, values are in scope from when they are created, until the end of the block
+they were created in ends. This doesn't answer why our code from earlier will
+refuse to compile though, as it would imply that the `"Hello"` value should be
+in scope until the end of `main`.
+
+However, this value is used inside the `print_string` function, so the value
+must also be available inside this functions block. Many languages would choose
+to make a copy of the data, duplicating it in memory, and making the duplicate
+available in the function (pass by value). Others might choose to use
+indirectiom, and have the `"Hello"` value be allocated in some other location,
+and give both `main` and `print_string` access to this indirection (pass by
+reference). Rust chooses neither of these approaches, and uses "pass by move"
+instead. When a function call occurs, parameters are moved into the scope
+(block) of the function being called. This reveals why the above code is
+rejected in Rust.
+
+When `my_string` is passed to `print_string`, `"Hello"` is moved from the block
+created by the `main` function into the block created by the `print_string`
+function (and is now named `s`). Then, when that first `print_string` function
+ends and the parameter `s` goes out of scope the value `"Hello"` is released and
+destroyed. This means that `"Hello"` no longer exists to he passed to the second
+`print_string` call.
+
+Hopefully that error message should make more sense now.
+
+You are probably now thinking something along the lines of "Rust is really
+inconvenient because it doesn't let me use any values twice", but the above
+isn't the whole story.
+
+## Copy Semantics
+
+Move semantics aren't the only way values are used in Rust. Values which perform
+no large memory allocation and require no cleanup, such as many of Rust's 
+primitive types. If the code example was the following, for example:
+
+```
+function print_number(n) {
+    /* internals hidden */
+}
+
+function main() {
+    let my_number = 7;
+    print_number(my_number);
+    print_number(my_number);
+}
+```
+
+Then the code would actually compile, and output:
+
+```
+7
+7
+```
+
+You can tell if a value will use copy semantics instead of move semantics if the
+type of the value implements the `Copy` trait, but those are Rust things I've
+not explained yet—so just trust me that you never really run into issues knowing
+if a value will move or copy.
+
+In general, a value will copy instead of move if it performs no allocations
+external to the type itself. A number just takes up the space defined by its 
+type, for example `i32` takes up 32 bytes, so it will use copy semantics. A type
+like `String` does need an external allocation, as the type itself cannot know 
+how long the text will be, so it uses move semantics.
+
+## What about strings though?
+
+It would still be inconvenient for strings to have move semantics. They are a
+common data type and so it would be nice if Rust could give us a solution to 
+this. Fortunately, it does have a solution. When you define a string literal,
+instead of the value being allocated and destroy as one would expect for
+something with move semantics, the text is embeded directly into the output
+binary and never deallocates. This allows the string to behave with copy
+semantics, as instead of moving around the string we can copy around a reference
+to the string. In this way, string literals become pass by (static) reference,
+and avoid the complexity of move semantics.
+
+This is why the first sample I gave isn't real Rust code. If it was it wouldn't
+have nicely illustrated move semantics. The following examples show real rust
+code equivalents of the samples in this article, followed by their outputs when
+attempting to compile and run them.
+
+## Real Rust Examples
+
+### Example 1: moving strings
+
+```rust
+fn print_string(s: String) {
+    println!("{}", s);
+}
+
+fn main() {
+    let my_string = String::from("Hello"); // String::from gives move semantics
+    print_string(my_string);
+    print_string(my_string);
+}
+```
+
+Outputs
+
+```
+Compiling example v0.0.1 (/example)
+error[E0382]: use of moved value: `my_string`
+ --> src/main.rs:8:18
+  |
+6 |     let my_string = String::from("Hello"); // String::from gives move semantics
+  |         --------- move occurs because `my_string` has type `String`, which does not implement the `Copy` trait
+7 |     print_string(my_string);
+  |                  --------- value moved here
+8 |     print_string(my_string);
+  |                  ^^^^^^^^^ value used here after move
+  |
+note: consider changing this parameter type in function `print_string` to borrow instead if owning the value isn't necessary
+ --> src/main.rs:1:20
+  |
+1 | fn print_string(s: String) {
+  |    ------------    ^^^^^^ this parameter takes ownership of the value
+  |    |
+  |    in this function
+help: consider cloning the value if the performance cost is acceptable
+  |
+7 |     print_string(my_string.clone());
+  |                           ++++++++
+
+For more information about this error, try `rustc --explain E0382`.
+error: could not compile `example` (bin "example") due to previous error
+```
+
+### Example 2: Copying numbers, pass by value
+
+```rust
+fn print_number(n: i32) {
+    println!("{}", n);
+}
+
+fn main() {
+    let my_number = 7;
+    print_number(my_number);
+    print_number(my_number);
+}
+
+```
+
+Outputs
+
+```
+   Compiling example v0.0.1 (/example)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.53s
+     Running `target/debug/example`
+
+7
+7
+```
+
+### Example 3: Copying strings, pass by static reference
+
+```rust
+fn print_string(s: &str) {
+    println!("{}", s);
+}
+
+fn main() {
+    let my_string = "Hello";
+    print_string(my_string);
+    print_string(my_string);
+}
+```
+
+Outputs
+
+```
+   Compiling example v0.0.1 (/example)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.78s
+     Running `target/debug/example`
+
+Hello
+Hello
+```
+
+[ub]: http://catb.org/jargon/html/N/nasal-demons.html
