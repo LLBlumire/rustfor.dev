@@ -28,7 +28,7 @@ takes to achieve this.
 The following is not Rust code you can compile, because im focusing on concepts
 not concretes, but consider the following.
 
-```
+```c
 function print_string(s) {
     /* internals hidden */
 }
@@ -45,7 +45,7 @@ What would you expect the above code to do. For many languages the answer is
 compiling". The following is an approximation of the error you would see if the
 above was real rust code.
 
-```
+```text
 error[E0382]: use of moved value: `my_string`
  --> src/main.rs:8:18
   |
@@ -127,7 +127,7 @@ Move semantics aren't the only way values are used in Rust. Values which perform
 no large memory allocation and require no cleanup, such as many of Rust's 
 primitive types. If the code example was the following, for example:
 
-```
+```c
 function print_number(n) {
     /* internals hidden */
 }
@@ -141,7 +141,7 @@ function main() {
 
 Then the code would actually compile, and output:
 
-```
+```text
 7
 7
 ```
@@ -192,7 +192,7 @@ fn main() {
 
 Outputs
 
-```
+```text
 Compiling example v0.0.1 (/example)
 error[E0382]: use of moved value: `my_string`
  --> src/main.rs:8:18
@@ -236,7 +236,7 @@ fn main() {
 
 Outputs
 
-```
+```text
    Compiling example v0.0.1 (/example)
     Finished dev [unoptimized + debuginfo] target(s) in 0.53s
      Running `target/debug/exampleL02MoveAndCopy
@@ -261,7 +261,7 @@ fn main() {
 
 Outputs
 
-```
+```text
    Compiling example v0.0.1 (/example)
     Finished dev [unoptimized + debuginfo] target(s) in 0.78s
      Running `target/debug/example`
