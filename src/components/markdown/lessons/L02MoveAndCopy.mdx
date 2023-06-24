@@ -66,8 +66,9 @@ every piece of data is destroyed. If you attempt to use memory after your
 program releases it to the operating system, you create a "use after free",
 this is undefined behaviour and may cause [nasal demons][ub].
 
-In order to do this, the Rust compiler meticulously tracks and enforces when
-all memory is acquired and released, when all values are created and destroyed.
+In order to ensure memory safety, the Rust compiler meticulously tracks and
+enforces when all memory is acquired and released, when all values are created
+and destroyed.
 
 In Rust, values are dropped (and memory is released) when they go out of scope.
 This creates the natural follow up question of "what is a scope?" and "what
@@ -75,7 +76,7 @@ scope is a value in?".
 
 ## What is a scope?
 
-Scopes, tautologically for the purpose of our explanation here, is simply
+Scopes, tautologically for the purpose of our explanation here, are simply
 "the part of the code where one can access a variable". Practically, the
 question we must therefore ask is "what constrains a scope?".
 
@@ -91,7 +92,7 @@ yet though, so let's not worry about that yet.
 
 ## Move Semantics
 
-So, values are in scope from when they are created, until the end of the block
+So, values are in scope from when they are created, and in scope until the block
 they were created in ends. This doesn't answer why our code from earlier will
 refuse to compile though, as it would imply that the `"Hello"` value should be
 in scope until the end of `main`.
@@ -100,7 +101,7 @@ However, this value is used inside the `print_string` function, so the value
 must also be available inside this functions block. Many languages would choose
 to make a copy of the data, duplicating it in memory, and making the duplicate
 available in the function (pass by value). Others might choose to use
-indirectiom, and have the `"Hello"` value be allocated in some other location,
+indirection and have the `"Hello"` value be allocated in some other location,
 and give both `main` and `print_string` access to this indirection (pass by
 reference). Rust chooses neither of these approaches, and uses "pass by move"
 instead. When a function call occurs, parameters are moved into the scope
@@ -231,7 +232,6 @@ fn main() {
     print_number(my_number);
     print_number(my_number);
 }
-
 ```
 
 Outputs
@@ -239,7 +239,7 @@ Outputs
 ```
    Compiling example v0.0.1 (/example)
     Finished dev [unoptimized + debuginfo] target(s) in 0.53s
-     Running `target/debug/example`
+     Running `target/debug/exampleL02MoveAndCopy
 
 7
 7

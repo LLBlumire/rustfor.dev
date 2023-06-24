@@ -1,4 +1,5 @@
 // next.config.mjs
+import rehypePrism from "rehype-prism-plus";
 import remarkGfm from "remark-gfm";
 import createMDX from "@next/mdx";
 
@@ -12,7 +13,7 @@ const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
     remarkPlugins: [remarkGfm],
-    rehypePlugins: [],
+    rehypePlugins: [rehypePrism],
   },
 });
 

@@ -1,4 +1,5 @@
 import "~/globals.css";
+import "~/prism.css";
 import { Fira_Sans, Fira_Code, Atkinson_Hyperlegible } from "next/font/google";
 import { Navbar } from "~/components/Navbar";
 
