@@ -10,7 +10,7 @@ The first thing to understand is the two problems that Rust solves.
 
 These are two classes of error entirely presented by Rust design, and are
 significant problems to try and solve. Errors in these domains make up a huge
-share of some of the security vulnerabilities and major errors that have plagued
+share of the security vulnerabilities and major errors that have plagued
 software. Many errors would be prevented by Rusts language design, including but 
 not limited to:
 
@@ -22,11 +22,15 @@ not limited to:
  - JCE Bleichenbacher Attack
  - glibc gethostby (GHOST)
 
-Now we've established that Rust is important, let's talk about the first step it
-takes to achieve this.
+To begin solving these, we will first address memory safety. This is, at a high
+level, ensuring that all memory accessed
 
-The following is not Rust code you can compile, because im focusing on concepts
-not concretes, but consider the following.
+ 1. Exists
+ 2. Contains valid data
+ 
+To address this lets start with an example: the following is not Rust code you
+can compile, because im focusing on concepts not concretes, but consider the
+following.
 
 ```js
 function print_string(s) {
@@ -63,28 +67,24 @@ move semantics.
 
 One of the steps Rust must take to ensure memory safety is to know exactly when
 every piece of data is destroyed. If you attempt to use memory after your
-program releases it to the operating system, you create a "use after free",
+program releases it to the operating system you create a "use after free",
 this is undefined behaviour and may cause [nasal demons][ub].
 
-In order to ensure memory safety, the Rust compiler meticulously tracks and
+In order to ensure memory safety the Rust compiler meticulously tracks and
 enforces when all memory is acquired and released, when all values are created
 and destroyed.
 
-In Rust, values are dropped (and memory is released) when they go out of scope.
-This creates the natural follow up question of "what is a scope?" and "what
-scope is a value in?".
-
-## What is a scope?
-
-Scopes, tautologically for the purpose of our explanation here, are simply
-"the part of the code where one can access a variable". Practically, the
-question we must therefore ask is "what constrains a scope?".
-
-## What constrains a scope? A.K.A. what scope is a value in?
-
-Variables have their scope constrained to a "block". A block is a collection of
-statements enclosed by braces. In the example I gave earlier, there are two
-blocks, one for the `main` function, and one for the `print_string` function.
+ - In Rust all values have a scope.
+ - Values are destroyed (and any memory they use is freed) when they go out of
+   scope.
+ - All values have an owner.
+ - Values go out of scope when their owner goes out of scope.
+ - The default owner of a value in a variable is the block the variable was
+   declared in.
+ - A block is a collection of statements enclosed by braces.
+ 
+In the example I gave earlier, there are two blocks, one for the `main`
+function, and one for the `print_string` function.
 
 In real Rust code, you can create blocks anywhere you like by sprinkling `{}`
 around the statements you want in the block. We aren't writing real Rust code
@@ -97,25 +97,60 @@ they were created in ends. This doesn't answer why our code from earlier will
 refuse to compile though, as it would imply that the `"Hello"` value should be
 in scope until the end of `main`.
 
-However, this value is used inside the `print_string` function, so the value
-must also be available inside this functions block. Many languages would choose
-to make a copy of the data, duplicating it in memory, and making the duplicate
-available in the function (pass by value). Others might choose to use
-indirection and have the `"Hello"` value be allocated in some other location,
-and give both `main` and `print_string` access to this indirection (pass by
-reference). Rust chooses neither of these approaches, and uses "pass by move"
+However this value is used inside the `print_string` function, so the value
+must also be available inside that functions block. There are two approaches
+most languages take to solving this problem:
+
+Some languages would choose to make a copy of the data, duplicating it in
+memory, and making the duplicate available in the function. This is called pass
+by value and may look something like this:
+
+```js
+function print_string(s) {
+    /* internals hidden */
+}
+
+function main() {
+    let my_string = "Hello";
+    let my_string_copy0 = copy(my_string);
+    print_string(my_string_copy0);
+    let my_string_copy1 = copy(my_string);
+    print_string(my_string_copy1);
+}
+```
+
+Others might choose to use indirection and have the `"Hello"` value be allocated
+in some other location and then give both `main` and `print_string` access to
+this indirection, this is called passnbt reference and may look something like
+this:
+
+```js
+function print_string(s) {
+    /* internals hidden */
+}
+
+function main() {
+    let my_string_ref = allocate("Hello");
+    let my_string_ref0 = copy(my_string_ref);
+    print_string(my_string_ref0);
+    let my_string_ref1 = copy(my_string_ref);
+    print_string(my_string_ref1);
+}
+```
+
+Rust chooses neither of these approaches, and uses "pass by move"
 instead. When a function call occurs, parameters are moved into the scope
-(block) of the function being called. This reveals why the above code is
-rejected in Rust.
+(block) of the function being called. We say the function being called "takes
+ownership" of the values. This reveals why the example code is rejected in Rust.
 
 When `my_string` is passed to `print_string`, `"Hello"` is moved from the block
 created by the `main` function into the block created by the `print_string`
 function (and is now named `s`). Then, when that first `print_string` function
-ends and the parameter `s` goes out of scope the value `"Hello"` is released and
-destroyed. This means that `"Hello"` no longer exists to he passed to the second
-`print_string` call.
+ends and the parameter `s` goes out of scope, the value `"Hello"` is released
+and destroyed. This means that `"Hello"` no longer exists to he passed to the
+second `print_string` call.
 
-Hopefully that error message should make more sense now.
+Hopefully the error message should make more sense now.
 
 You are probably now thinking something along the lines of "Rust is really
 inconvenient because it doesn't let me use any values twice", but the above
@@ -124,8 +159,9 @@ isn't the whole story.
 ## Copy Semantics
 
 Move semantics aren't the only way values are used in Rust. Values which perform
-no large memory allocation and require no cleanup, such as many of Rust's 
-primitive types. If the code example was the following, for example:
+no large memory allocation and require no complex cleanup, such as many of
+Rust's  primitive types, use copy semantics. This makes them pass by value.
+If the code example was the following, for example:
 
 ```js
 function print_number(n) {
@@ -153,16 +189,18 @@ if a value will move or copy.
 
 In general, a value will copy instead of move if it performs no allocations
 external to the type itself. A number just takes up the space defined by its 
-type, for example `i32` takes up 32 bytes, so it will use copy semantics. A type
-like `String` does need an external allocation, as the type itself cannot know 
+type, for example `i32` takes up 32 bits so it will use copy semantics. A type
+like `String` does need an external allocation as the type itself cannot know 
 how long the text will be, so it uses move semantics.
 
 ## What about strings though?
 
 It would still be inconvenient for strings to have move semantics. They are a
 common data type and so it would be nice if Rust could give us a solution to 
-this. Fortunately, it does have a solution. When you define a string literal,
-instead of the value being allocated and destroy as one would expect for
+this.
+
+Fortunately, it does have a solution. When you define a string literal,
+instead of the value being allocated and destroyed as one would expect for
 something with move semantics, the text is embeded directly into the output
 binary and never deallocates. This allows the string to behave with copy
 semantics, as instead of moving around the string we can copy around a reference
@@ -175,6 +213,12 @@ code equivalents of the samples in this article, followed by their outputs when
 attempting to compile and run them.
 
 ## Real Rust Examples
+
+In these examples, so thay you can compile them yourself, I have unhidden the
+implementation of `print_{string,number}`. Do not worry about `println!` for 
+now, as to understand it fully requires understanding macro variadics,
+borrowing, and reference coercion. For now, understand that `println!("{}", x)`
+will invoke the necessary operating system machinery to print the value of `x`.
 
 ### Example 1: moving strings
 
