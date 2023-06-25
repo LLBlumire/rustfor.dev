@@ -148,7 +148,7 @@ When `my_string` is passed to `print_string`, `"Hello"` is moved from the block
 created by the `main` function into the block created by the `print_string`
 function (and is now named `s`). Then, when that first `print_string` function
 ends and the parameter `s` goes out of scope, the value `"Hello"` is released
-and destroyed. This means that `"Hello"` no longer exists to he passed to the
+and destroyed. This means that `"Hello"` no longer exists to be passed to the
 second `print_string` call.
 
 Hopefully the error message should make more sense now.
