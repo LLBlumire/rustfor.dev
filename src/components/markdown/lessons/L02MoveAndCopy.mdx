@@ -220,7 +220,7 @@ For more information about this error, try `rustc --explain E0382`.
 error: could not compile `example` (bin "example") due to previous error
 ```
 
-### Example 2: Copying numbers, pass by value
+### Example 2: copying numbers, pass by value
 
 ```rust
 fn print_number(n: i32) {
@@ -239,13 +239,13 @@ Outputs
 ```text
    Compiling example v0.0.1 (/example)
     Finished dev [unoptimized + debuginfo] target(s) in 0.53s
-     Running `target/debug/exampleL02MoveAndCopy
+     Running `target/debug/example`
 
 7
 7
 ```
 
-### Example 3: Copying strings, pass by static reference
+### Example 3: copying string literals, pass by static reference
 
 ```rust
 fn print_string(s: &str) {
