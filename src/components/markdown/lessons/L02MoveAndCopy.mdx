@@ -248,10 +248,10 @@ fn main() {
 }
 ```
 
-In this example, `String::from` is used to force Rust to perform allocations and
-give us a type with move semantics.
+In this example, `String::from` is used to force Rust to perform an allocation
+at Runtime and give us a type with move semantics (`String` instead of `&str`).
 
-Outputs
+#### Outputs
 
 ```text
 Compiling example v0.0.1 (/example)
@@ -295,7 +295,7 @@ fn main() {
 }
 ```
 
-Outputs
+#### Outputs
 
 ```text
    Compiling example v0.0.1 (/example)
@@ -320,7 +320,7 @@ fn main() {
 }
 ```
 
-Outputs
+#### Outputs
 
 ```text
    Compiling example v0.0.1 (/example)
