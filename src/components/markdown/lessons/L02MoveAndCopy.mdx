@@ -162,7 +162,7 @@ isn't the whole story.
 Move semantics aren't the only way values are used in Rust. Values which perform
 no large memory allocation and require no complex cleanup, such as many of
 Rust's  primitive types, use copy semantics. This makes them pass by value.
-If the code example was the following, for example:
+If the first example used a number, for example:
 
 ```js
 function print_number(n) {
