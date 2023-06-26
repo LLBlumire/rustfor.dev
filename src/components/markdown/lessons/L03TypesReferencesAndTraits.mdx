@@ -1,6 +1,6 @@
 # Lesson 3: Types, References, and Traits
 
-You will recall from last lesson thay memory safety requires that all memory
+You will recall from last lesson that memory safety requires that all memory
 accessed
 
  1. Exists
@@ -23,7 +23,7 @@ bytes, and their legal values.
 | :--- | :--: | :----- |
 | `!`    | 0    |        |
 | `()`   | 0    | `()` |
-| `bool` | 1    | `true`, `false` |
+| `bool` | 1    | `true` as `0x01`, `false` as `0x00` |
 | `u8`   | 1 | Natural numbers from $0$ to $2^{8}-1$ |
 | `i8` | 1 | Integers from $-(2^{7})$ to $2^{7}-1$ |
 | `u16` | 2 | Natural numbers from $0$ to $2^{16}-1$ |
@@ -31,7 +31,7 @@ bytes, and their legal values.
 | `u32` | 4 | Natural numbers from $0$ to $2^{32}-1$ |
 | `i32` | 4 | Integers from $-(2^{31})$ to $2^{31}-1$ |
 | `f32` | 4 | All IEEE 754-2008 binary32 format values (754-1985 single precision float) |
-| `char` | 4 | Any value in the `0x0000` to `0xD7FF` or `0xE000` to `0x10FFFF` range |
+| `char` | 4 | Any unicode scalar value in the `0x0000` to `0xD7FF` or `0xE000` to `0x10FFFF` range |
 | `u64` | 8 | Natural numbers from $0$ to $2^{64}-1$ |
 | `i64` | 8 | Integers from $-(2^{63})$ to $2^{63}-1$ |
 | `f32` | 8 | All IEEE 754-2008 binary64 format values (754-1985 dounle precision float) |
@@ -40,12 +40,12 @@ bytes, and their legal values.
 | `usize` | * | As per `u16`, `u32`, or `u64` depending on target platform's pointer type|
 | `isize` | * | As per `i16`, `i32`, or `i64` depending on target platform's pointer type|
 
-*\*the `usize` and `isize` typed have a platform specific size. For a 32 bit
+*\*the `usize` and `isize` types have a platform specific size. For a 32 bit
 computer they will be 4 bytes large, for a 64 bit computer they will be 8 bytes
 large*
 
 Two types above seem more odd, and not as self explanatory as the others. These
-are the two with zero size. `()` is pronounced "unit" and is the type with only
+are the two with zero size. `()` is pronounced "unit" and is a type with only
 one value, also called `()` "unit". This type takes up no space, as anywhere the
 compiler encounters this type it can work with it without needing to store any
 value (as it knows the value without storing it).
@@ -54,17 +54,18 @@ The most common place you will encounter `()` is as the return type from
 functions and expressions that return no data. It is similar to `void` in other
 languages.
 
-The other type, `!`, is pronounced "Never", and it cannot be constructed.
+The other type, `!`, is pronounced "never", and it cannot be constructed.
 Anywhere the compiler encounters a value of this type it can assume is
-unreachable code.
+unreachable code, as no value of this type exists.
 
 The most common place you will encounter `!` is as the return type from
-functions that loop infinitely and never terminate, or where execution branches.
+functions that loop infinitely and never terminate or where execution branches.
 
 All the other types can be constructed and represented in code simply as their
 numeric representation, or a character in single quotes for the `char` type.
 Rust will infer the correct type if not explicitly given, though it can be
-suffixed to the numeric value.
+suffixed to the numeric value, or any type can be prescribed in the `let`
+expression after the variable name (`let variable: type = value;`).
 
 ```rust
 let u = (); // `u: ()` is inferred
@@ -75,7 +76,7 @@ let s: i8 = -9;
 let i = 93; // infers i32 by default 
 let f = 12.4; // infers f32 by default
 let c = 'z'; // infers char from `'`
-let never = loop { }; // loops forever, never is never assigned to
+let never = loop { }; // loops forever, `never` is never assigned to
 ```
 
 ## Sequence Types
@@ -99,11 +100,11 @@ let [p, q, r, s] = x; // p == 122, q == -68, r == 70, s == 32
 ```
 
 Tuples allow you to store a sequence of different types in memory, though Rust
-may place padding between them according to arcane rules known as the ["default
-representation"][repr]. `(i32, char)` is a sequence of a 32-bit integer and a 
-unicode scalar character (UTF-32). You can access the parts of a tuple through
-numeric field access starting at 0. You can also destructure tuples, but again
-more on that next lesson.
+may place padding between them or change their in memory order according to
+arcane rules known as the ["default representation"][repr]. `(i32, char)` is a
+sequence of a 32-bit integer and a unicode scalar character (UTF-32). You can
+access the parts of a tuple through numeric field access starting at 0. You can
+also destructure tuples, but again more on that next lesson.
 
 ```rust
 let x = (2503, 'B'); // infers `x: (i32, char)`
