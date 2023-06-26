@@ -21,7 +21,7 @@ bytes, and their legal values.
 
 | Type | Size | Values |
 | :--- | :--: | :----- |
-| `!`    | 0    |        |
+| `!`    | 0    |      |
 | `()`   | 0    | `()` |
 | `bool` | 1    | `true` as `0x01`, `false` as `0x00` |
 | `u8`   | 1 | Natural numbers from $0$ to $2^{8}-1$ |
@@ -176,9 +176,9 @@ There are two possible sizes a reference can have, depending on the type of the
 borrowed value. If the borrowed value is a sized type, references to it will
 have the same size as `usize`, storing a pointer to the value in memory.
 
-If the borrowed value is an unsized type, referencez to it will have twice the
+If the borrowed value is an unsized type, references to it will have twice the
 size of `usize`, with half storing a pointer to the value in memory, and the
-other half storing the size of the slice. This ability for references to borrow
+other half storing the size of the value. This ability for references to borrow
 unsized types with a known size solves the problem from the previous section,
 we cannot store a `str` or slice `[T]` directly in a variable, but we can store
 a reference to them!
@@ -206,6 +206,15 @@ literal creates a value of the type `&'static str`. `str` because it is a valid
 UTF-8 unicode string, `&'static` because the string value is written into the
 binary and never dropped. Because these are an immutable reference they have
 copy semantics as you saw.
+
+Pointers, usually called "raw pointers" in Rust, exist both for interoperability
+with C and to allow implementing custom types that perform their own memory
+management (the standard library has many of these). These types are `*const T`
+and `*mut T`. They do not have lifetimes, and do not enforce thr same
+restrictions as their reference counterparts. They are easy to create from
+references, but cannot be read from, written to, or converted back into
+references without using the `unsafe` keyword and promising Rust that you have
+upheld its memory and thread safety guarantees despite them not being enforced.
 
 ## Functional Types
 
