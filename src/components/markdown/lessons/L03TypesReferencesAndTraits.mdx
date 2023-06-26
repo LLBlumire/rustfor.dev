@@ -129,7 +129,81 @@ finally talk about references.
 
 ## Reference (and Pointer) Types
 
-**todo**
+Last lesson I mentioned that Rust is trying to solve both memory safety *and* 
+thread safety. To achieve thread safety, values must only be accessed and
+modified in a way that ensures all threads behave properly. To achieve this,
+Rust disallows simultaneous mutable access.
+
+To further motivate references, consider the undesirable effect of move 
+semantics, that no value of a type with move semantics could be passed to a
+function without either being explicitly dropped when the function ends, or 
+manually returned to the caller to hand back ownership.
+
+Consider further that there would be no way for a function to modify a value
+in place, regardless of if the value has move or copy semantics.
+
+References provide indirection and are the solution to all of these issues, but
+in order to ensure thread safety Rust has two reference types instead of one.
+One provides read only access and many of these references may coexist. One
+provides write access and if it exists then it must be the only reference to a
+value.
+
+If a reference to a value exists, we say that the reference borrows the value.
+
+| Type     | Value               | Read | Write | Drop T | Create `&T` | Create `&mut T` |
+| :------- | :------------------ | :--- | :---- | :----- | :---------- | :-------------- |
+| `T`      | Owned               | Yes* | Yes*  | Yes*   | Yes†        | Yes†            |
+| `&T`     | Borrowed            | Yes  | No    | No     | Yes         | No              |
+| `&mut T` | Borrowed as mutable | Yes  | Yes   | No     | Yes‡        | No              |
+
+*\* only if no borrows exist.*
+
+*† only if no mutable borrow exists.*
+
+*‡ only by downgrading and discarding the mutable borrow.*
+
+In summary, a value can be borrowed by any number of immutable references, **or**
+can be borrowed as mutable by at most one mutable reference.
+
+As an additional note, because any number of immutable references to the same
+value can exist, `&T` behaves with copy semantics regardless of `T`. Conversely,
+`&mut T` always has move semantics (moving the borrow, not the value).
+
+It is enforced that a reference cannot outlive the value it borrows, as this
+would allow a use after free memory error. Equivalently, a value cannot be
+dropped while it is borrowed, and if a values owner goes out of scope while a
+borrow exists the program will not compile. This is called lifetime checking,
+and all references have a lifetime (which the value cannot be dropped or moved
+durin).
+
+There are two possible sizes a reference can have, depending on the type of the
+borrowed value. If the borrowed value is a sized type, references to it will
+have the same size as `usize`, storing a pointer to the value in memory.
+
+If the borrowed value is an unsized type, referencez to it will have twice the
+size of `usize`, with half storing a pointer to the value in memory, and the
+other half storing the size of the slice. This ability for references to borrow
+unsized types with a known size solves the problem from the previous section,
+we cannot store a `str` or slice `[T]` directly in a variable, but we can store
+a reference to them!
+
+```rust
+fn main() {
+    let x: [i32; 4] = [1, 4, 65, -110];
+    println!("How many numbers would you like? [1 to 4]");
+    let y: usize = read_number();
+    let z: &[i32] = &x[0..y]; // unsized slice in a variable!
+    println!("Here are your numbers: {z:?}");
+}
+
+/// Function included only to make this example work,
+/// please don't worry about what it's doing!
+fn read_number() -> usize {
+    let mut buf = String::new();
+    std::io::stdin().read_line(&mut buf).unwrap();
+    buf.trim().parse().unwrap()
+}
+```
 
 ## Functional Types
 
