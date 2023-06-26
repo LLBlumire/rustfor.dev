@@ -1,4 +1,4 @@
-# Lesson 3: Types, References, and Traits
+# Lesson 3: Types and References
 
 You will recall from last lesson that memory safety requires that all memory
 accessed
@@ -218,14 +218,156 @@ upheld its memory and thread safety guarantees despite them not being enforced.
 
 ## Functional Types
 
-**todo**
+When you create a function you also create a unit type representing that
+function, which has a value identified by the function name. This unit value
+can be assigned to a variable and called the same as one might call the
+function, but the type cannot be named and must only be inferred.
+
+```rust
+fn main() {
+    let my_fn = add_one;
+    println!("{}", my_fn(4))
+}
+
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+If you do want to prescribe a type, you can coerce a function unit value into a
+function pointer. This has size equivalent to `usize` instead of having zero
+size like the function unit value, and it's value is the memory address where
+the function is stored. Function pointer types are written `fn(params) -> ret`.
+
+```rust
+fn main() {
+    let my_fn: fn(i32) -> i32 = add_one;
+    println!("{}", my_fn(4))
+}
+
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
 
 ## User Defined Types
 
-**todo**
+There are three kinds of user defined types: structs, enums, and unions.
+Structs and enums are extremely useful. Unions exist mostly for C interop.
 
-## Traits
+### Structs
 
-**todo**
+There are three types of struct definition: unit structs, tuple structs, and
+named field structs.
+
+The first of the three allows custom user defined unit types. These are useful
+for representing trivial state with custom implementations (more on this next
+lesson).
+
+```rust
+struct MyUnitStruct;
+
+fn main() {
+    let x = MyUnitStruct;
+}
+```
+
+The second of the three allows custom tuple structs, which behave like tuples
+with numeric index keys and destructuring, but act as an independent type with
+their own implementations.
+
+```rust
+struct MyTupleStruct(i32, char);
+
+fn main() {
+    let x = MyTupleStruct(-16, 'L');
+    let a = x.0;
+    let b = x.1;
+    let MyTupleStruct(p, q) = x;
+}
+```
+
+The final of the three, and most commonly seen, is a named field struct. It has 
+no equivalent primitives type, but you can think of it as a tuple with named
+fields.
+
+```rust
+struct MyFieldStruct {
+    my_number: i32,
+    my_letter: char,
+}
+
+fn main() {
+    let x = MyFieldStruct {
+        my_number: 24,
+        my_letter: 'K',
+    };
+    let a = x.my_number;
+    let b = x.my_letter;
+    let MyFieldStruct {
+        my_number: p,
+        my_letter: q,
+    } = x;
+}
+```
+
+### Enums
+
+Enums in Rust are not like in most other languages. They can be, as you will
+see, but typically they are used in a way that is significantly more poweful.
+
+There are three types of enum in Rust: C-like enums, sum type enums, and
+zero-variant enums.
+
+C-like enums work like the enums in most languages, providing an association
+between a number and a named value.
+
+```rust
+enum CLikeEnum {
+    ImplicitZero, // Defaults to `= 0`
+    First, // Continues as `= 1`
+    Second = 2, // Explicit number 
+    Tenth = 10, // Can skip ahead
+}
+
+fn main() {
+    let e = CLikeEnum::Second;
+    let n = e as i32;
+}
+```
+
+Sum type enums allow you to define a type that has multiple possible mutually
+exclusive states called variants. Variants, like structs, can be unit, tuple, or
+named field variants.
+
+```rust
+enum SumTypeEnum {
+    MyUnitVariant,
+    MyTupleVariant(i32, char),
+    MyNamedFieldVariant {
+        my_str: &'static str,
+        my_bool: bool,
+    }
+}
+
+fn main() {
+    let mut a: SumTypeEnum = SumTypeEnum::MyUnitVariant;
+    a = SumTypeEnum::MyTupleVariant(-8, 'g');
+    a = SumTypeEnum::MyNamedFieldVariant {
+        my_str: "Example!",
+        my_bool: true,
+    };
+}
+```
+
+Enums can be destructured, but this is more complex and will be covered in
+greater detail in a later lesson on pattern matching. This destructuring is the
+only coherent way to access the internal state of a variant.
+
+### Unions
+
+In almost a decade of writing and using Rust code I have never needed a union.
+If you do need them, then you're either doing C interop and already know what
+you are doing, or you're wrong and should use another data structure instead.
 
 [repr]: https://doc.rust-lang.org/reference/type-layout.html#the-default-representation

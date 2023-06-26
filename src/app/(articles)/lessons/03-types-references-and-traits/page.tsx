@@ -1,5 +1,5 @@
-import L03TypesReferencesAndTraits from "~/components/markdown/lessons/L03TypesReferencesAndTraits.mdx";
+import L03TypesAndReferences from "~/components/markdown/lessons/L03TypesAndReferences.mdx";
 
 export default function Page() {
-  return <L03TypesReferencesAndTraits />;
+  return <L03TypesAndReferences />;
 }
