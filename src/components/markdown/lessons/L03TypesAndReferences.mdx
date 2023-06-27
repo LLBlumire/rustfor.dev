@@ -370,4 +370,33 @@ In almost a decade of writing and using Rust code I have never needed a union.
 If you do need them, then you're either doing C interop and already know what
 you are doing, or you're wrong and should use another data structure instead.
 
+## Generics
+
+User defined types can have generic type parameters. These allow for types
+inside the UDT to be defined by the user of the UDT, rather than by the UDT
+itself.
+
+```rust
+struct MyDataStruct<T> {
+    my_num: i32, 
+    my_data: T,
+}
+enum Choice<A, B> {
+    First(A),
+    Second(B),
+    Neither,
+    Both {
+        first: A,
+        second: B
+    }
+}
+fn main() {
+    let x: MyDataStruct<char> = MyDataStruct {
+        my_num: 17,
+        my_data: 'G',
+    };
+    let y: Choice<f64, MyDataStruct<char>> = Choice::Second(x);
+}
+```
+
 [repr]: https://doc.rust-lang.org/reference/type-layout.html#the-default-representation
