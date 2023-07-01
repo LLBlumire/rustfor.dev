@@ -29,4 +29,45 @@
     ) {
     text-wrap: balance;
   }
+
+  .site-prose :where(pre, code):not(:where([class~="not-prose"] *)) {
+    @apply bg-neutral-900 text-neutral-100 font-normal;
+  }
+  .site-prose :where(:not(pre) > code):not(:where([class~="not-prose"] *)) {
+    @apply px-1 rounded py-0.5;
+  }
+  .site-prose :where(code):not(:where([class~="not-prose"] *))::before,
+  .site-prose :where(code):not(:where([class~="not-prose"] *))::after {
+    content: "";
+  }
+
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    :is(.token.function, .token.macro.property) {
+    @apply text-purple-400;
+  }
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    :is(.token.keyword, .token.operator) {
+    @apply text-red-400;
+  }
+  .site-prose :where(code):not(:where([class~="not-prose"] *)) .token.comment {
+    @apply text-neutral-400;
+  }
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    :is(.token.string, .token.boolean, .token.number, .token.char) {
+    @apply text-blue-400;
+  }
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    :is(.token.class-name, .token.namespace) {
+    @apply text-orange-400;
+  }
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    .token.namespace
+    > .token.punctuation {
+    @apply text-red-400;
+  }
 }
