@@ -699,6 +699,25 @@ fn main() {
 }
 ```
 
+In the above, `Choice<f64, MyDataStruct<char>>` essentially creates the
+following type:
+
+```rust
+struct MyDataStruct<char> {
+    my_num: i32,
+    my_data: char,
+}
+enum Choice<f64, MyDataStruct<char>> {
+    First(f64),
+    Second(MyDataStruct<char>),
+    Neither,
+    Both {
+        first: f64,
+        second: MyDataStruct<char>,
+    }
+}
+```
+
 User defined types can also have generic lifetimes. This allows them to store
 references.
 
