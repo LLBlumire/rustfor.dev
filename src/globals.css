@@ -20,6 +20,13 @@
   }
 
   .site-prose {
-    @apply prose prose-headings:font-heading prose-neutral dark:prose-invert sm:prose-base lg:prose-lg xl:prose-xl 2xl:prose-2xl;
+    @apply prose prose-headings:font-heading prose-neutral dark:prose-invert sm:prose-base lg:prose-lg xl:prose-xl;
+  }
+
+  .site-prose
+    :is(
+      :where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"] *))
+    ) {
+    text-wrap: balance;
   }
 }
