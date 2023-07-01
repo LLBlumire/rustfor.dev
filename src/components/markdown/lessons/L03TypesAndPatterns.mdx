@@ -699,4 +699,17 @@ fn main() {
 }
 ```
 
+User defined types can also have generic lifetimes. This allows them to store
+references.
+
+```rust
+struct HoldsAReference<'a> {
+    ref_to_number: &'a i32,
+}
+```
+
+If the number is static, you will have a `HoldsAReference<'static>`. If it has
+some other lifetime (which are almost always anonymous), then you will have a
+`HoldsAReference<'some_unnamed_anonymous_lifetime>`.
+
 [repr]: https://doc.rust-lang.org/reference/type-layout.html#the-default-representation
