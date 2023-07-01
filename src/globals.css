@@ -38,7 +38,7 @@
   }
   .site-prose :where(code):not(:where([class~="not-prose"] *))::before,
   .site-prose :where(code):not(:where([class~="not-prose"] *))::after {
-    content: "";
+    display: none;
   }
 
   .site-prose
@@ -56,7 +56,13 @@
   }
   .site-prose
     :where(code):not(:where([class~="not-prose"] *))
-    :is(.token.string, .token.boolean, .token.number, .token.char) {
+    :is(
+      .token.string,
+      .token.boolean,
+      .token.number,
+      .token.char,
+      .token.lifetime-annotation.symbol
+    ) {
     @apply text-blue-400;
   }
   .site-prose
@@ -69,5 +75,18 @@
     .token.namespace
     > .token.punctuation {
     @apply text-red-400;
+  }
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    :is(.token.lifetime-annotation.symbol) {
+    @apply text-yellow-400;
+  }
+  .site-prose
+    :where(code):not(:where([class~="not-prose"] *))
+    :is(
+      .token.class-name + .token.operator,
+      .token.class-name + .token.operator ~ .token.operator
+    ) {
+    @apply text-neutral-100;
   }
 }
