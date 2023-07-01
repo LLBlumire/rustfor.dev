@@ -3,7 +3,7 @@
 import { MoveRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { lessons } from "~/app/lessons/page";
+import { lessons } from "~/lessons";
 
 export function NextLessonPage() {
   const pathName = usePathname();

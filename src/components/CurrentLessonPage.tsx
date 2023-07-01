@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { lessons } from "~/app/lessons/page";
+import { lessons } from "~/lessons";
 
 export function CurrentLessonPage() {
   const pathName = usePathname();
