@@ -5,42 +5,42 @@ tick.
 
 The first thing to understand is the two problems that Rust solves.
 
- 1. Memory safety
- 2. Thread safety
+1.  Memory safety
+2.  Thread safety
 
 These are two classes of error entirely prevented by Rust design, and are
 significant problems to try and solve. Errors in these domains make up a huge
 share of the security vulnerabilities and major errors that have plagued
-software. Many errors would be prevented by Rusts language design, including but 
+software. Many errors would be prevented by Rusts language design, including but
 not limited to:
 
- - OpenSSL Heartbleed
- - NetUSB run_init_netbus
- - SecureTransfer goto fail
- - GNUTLS goto cleanup
- - SChannel Winshock
- - JCE Bleichenbacher Attack
- - glibc gethostby (GHOST)
+- OpenSSL Heartbleed
+- NetUSB run_init_netbus
+- SecureTransfer goto fail
+- GNUTLS goto cleanup
+- SChannel Winshock
+- JCE Bleichenbacher Attack
+- glibc gethostby (GHOST)
 
 To begin solving these, we will first address memory safety. This is, at a high
 level, ensuring that all memory accessed
 
- 1. Exists
- 2. Contains valid data
- 
+1.  Exists
+2.  Contains valid data
+
 To address this lets start with an example: the following is not Rust code you
 can compile, because im focusing on concepts not concretes, but consider the
 following.
 
 ```js
 function print_string(s) {
-    /* internals hidden */
+  /* internals hidden */
 }
 
 function main() {
-    let my_string = "Hello";
-    print_string(my_string);
-    print_string(my_string);
+  let my_string = "Hello";
+  print_string(my_string);
+  print_string(my_string);
 }
 ```
 
@@ -74,16 +74,16 @@ In order to ensure memory safety the Rust compiler meticulously tracks and
 enforces when all memory is acquired and released, when all values are created
 and destroyed.
 
- - In Rust all values have a scope.
- - Values are destroyed (and any memory they use is freed) when they go out of
-   scope.
- - All values have an owner.
- - Values go out of scope when their owner goes out of scope.
- - The default owner of a value in a variable is the block the variable was
-   declared in.
- - A block is a collection of statements enclosed by braces.
- - A block goes out of scope when it ends (`}`).
- 
+- In Rust all values have a scope.
+- Values are destroyed (and any memory they use is freed) when they go out of
+  scope.
+- All values have an owner.
+- Values go out of scope when their owner goes out of scope.
+- The default owner of a value in a variable is the block the variable was
+  declared in.
+- A block is a collection of statements enclosed by braces.
+- A block goes out of scope when it ends (`}`).
+
 In the example I gave earlier, there are two blocks, one for the `main`
 function, and one for the `print_string` function.
 
@@ -108,15 +108,15 @@ by value and may look something like this:
 
 ```js
 function print_string(s) {
-    /* internals hidden */
+  /* internals hidden */
 }
 
 function main() {
-    let my_string = "Hello";
-    let my_string_copy0 = copy(my_string);
-    print_string(my_string_copy0);
-    let my_string_copy1 = copy(my_string);
-    print_string(my_string_copy1);
+  let my_string = "Hello";
+  let my_string_copy0 = copy(my_string);
+  print_string(my_string_copy0);
+  let my_string_copy1 = copy(my_string);
+  print_string(my_string_copy1);
 }
 ```
 
@@ -127,15 +127,15 @@ this:
 
 ```js
 function print_string(s) {
-    /* internals hidden */
+  /* internals hidden */
 }
 
 function main() {
-    let my_string_ref = allocate("Hello");
-    let my_string_ref0 = copy(my_string_ref);
-    print_string(my_string_ref0);
-    let my_string_ref1 = copy(my_string_ref);
-    print_string(my_string_ref1);
+  let my_string_ref = allocate("Hello");
+  let my_string_ref0 = copy(my_string_ref);
+  print_string(my_string_ref0);
+  let my_string_ref1 = copy(my_string_ref);
+  print_string(my_string_ref1);
 }
 ```
 
@@ -161,18 +161,18 @@ isn't the whole story.
 
 Move semantics aren't the only way values are used in Rust. Values which perform
 no large memory allocation and require no complex cleanup, such as many of
-Rust's  primitive types, use copy semantics. This makes them pass by value.
+Rust's primitive types, use copy semantics. This makes them pass by value.
 If the first example used a number, for example:
 
 ```js
 function print_number(n) {
-    /* internals hidden */
+  /* internals hidden */
 }
 
 function main() {
-    let my_number = 7;
-    print_number(my_number);
-    print_number(my_number);
+  let my_number = 7;
+  print_number(my_number);
+  print_number(my_number);
 }
 ```
 
@@ -189,24 +189,31 @@ not explained yet—so just trust me that you never really run into issues knowi
 if a value will move or copy.
 
 In general, a value will copy instead of move if it performs no allocations
-external to the type itself. A number just takes up the space defined by its 
+external to the type itself. A number just takes up the space defined by its
 type, for example `i32` takes up 32 bits so it will use copy semantics. A type
-like `String` does need an external allocation as the type itself cannot know 
+like `String` does need an external allocation as the type itself cannot know
 how long the text will be, so it uses move semantics.
 
 ## What about strings though?
 
 It would still be inconvenient for strings to have move semantics. They are a
-common data type and so it would be nice if Rust could give us a solution to 
+common data type and so it would be nice if Rust could give us a solution to
 this.
 
-Fortunately, it does have a solution. When you define a string literal,
-instead of the value being allocated and destroyed as one would expect for
-something with move semantics, the text is embeded directly into the output
-binary and never deallocates. This allows the string to behave with copy
-semantics, as instead of moving around the string we can copy around a reference
-to the string. In this way, string literals become pass by (static) reference,
-and avoid the complexity of move semantics.
+Fortunately, Rust does have a solution. There are two string types[^1].
+
+When you define a string literal, you create a value with the `&str` type.
+You'll learn more about this type next lesson, but for now think of it as an
+immutable sequence of UTF-8 bytes sitting somewhere in memory. It can't be
+modified, resized, or do anything other than be read. Because of these
+restrictions, this type can have copy semantics! In the case of a string
+literal, that sequence of bytes is embeded directly into your application
+binary.
+
+We can create a string with move semantics, which I will do in the examples in
+the next section, using `String::from("a string literal")`. This gives you a
+`String` instead of an `&str`, which can be resized and controls its own memory
+allocation.
 
 This is why the first sample I gave isn't real Rust code. If it was it wouldn't
 have nicely illustrated move semantics. The following examples show real rust
@@ -216,7 +223,7 @@ attempting to compile and run them.
 ## Real Rust Examples
 
 In these examples, so thay you can compile them yourself, I have unhidden the
-implementation of `print_{string,number}`. Do not worry about `println!` for 
+implementation of `print_{string,number}`. Do not worry about `println!` for
 now, as to understand it fully requires understanding macro variadics,
 borrowing, and reference coercion. For now, understand that `println!("{}", x)`
 will invoke the necessary operating system machinery to print the value of `x`.
@@ -247,10 +254,6 @@ fn main() {
     print_string(my_string);
 }
 ```
-
-In this example, `String::from` is used to force Rust to perform an allocation
-at run time and give us a type with move semantics (`String` instead of `&str`,
-you'll learn more about these types in the next lesson).
 
 #### Outputs
 
@@ -332,4 +335,10 @@ Hello
 Hello
 ```
 
+[^1]:
+    There's actually at least 8, but only two that show up in 99% of all
+    programming. The rest exist for over-optimisation, compatability with C,
+    and [strange operating systems][win] that insist on using UTF-16.
+
 [ub]: http://catb.org/jargon/html/N/nasal-demons.html
+[win]: https://www.microsoft.com/en-gb/windows
