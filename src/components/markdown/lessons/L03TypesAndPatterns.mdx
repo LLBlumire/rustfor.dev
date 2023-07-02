@@ -337,569 +337,453 @@ is.
 
 ## References
 
-## Structs
-
-## Generic Types
-
-## Generic Lifetimes
-
----
-
-# Old Article Pending Rewrite (Stop Reading Here)
-
-### Slices
-
-It is also possible to have a sequence of unknown size (we call these unsized),
-it is not possible for Rust to reserve space for these on the stack ahead of
-time. We call such a sequence a slice and it is written `[T]`. The type `[u8]`
-for example is a sequence of unsigned bytes of unkown (at compile time) length.
-
-There is one other special unsized type: `str`. This type is equivalent to
-`[u8]`, however the full sequence is guaranteed to be a valid UTF-8 encoded
-string.
-
-Because they are unsized, slices cannot be placed directly inside a variable,
-as the compiler does not know how much space to reserve for that variable. In
-order to store these in a variable we must use indirection, and so I must now
-finally talk about references.
-
-## Reference (and Pointer) Types
-
 Last lesson I mentioned that Rust is trying to solve both memory safety _and_
 thread safety. To achieve thread safety, values must only be accessed and
 modified in a way that ensures all threads behave properly. To achieve this,
 Rust disallows simultaneous mutable access.
 
 To further motivate references, consider the undesirable effect of move
-semantics, that no value of a type with move semantics could be passed to a
+semantics that no value of a type with move semantics could be passed to a
 function without either being explicitly dropped when the function ends, or
 manually returned to the caller to hand back ownership.
 
+```rust
+let x = String::from("Hello");
+fn exclaim(s: String) -> String {
+    format!("{s}!")
+}
+let x = exclaim(x);
+let x = exclaim(x);
+println!("{x}");
+```
+
+```
+Hello!!
+```
+
 Consider further that there would be no way for a function to modify a value
-in place, regardless of if the value has move or copy semantics.
+in place, regardless of if the value has move or copy semantics. In the above
+example we create a new string with it's own memory each time `exclaim` is
+called.
 
 References provide indirection and are the solution to all of these issues, but
 in order to ensure thread safety Rust has two reference types instead of one.
+
+### Immutable References
 
 The first, `&T`, is called a reference and provides read only access. Many of
 these references may coexist. Because multiple of these references to the same
 value can exist, `&T` has copy semantics regardless of the semantics of `T`.
 If a reference to a value exists, we say that the reference borrows the value.
 
-The second, `&mut T`, is called a mutable reference and provides read and write
-access. Only one such mutable reference to a value may exist at a time. A
-mutable reference cannot coexist with an immutable reference. `&mut T` always
-has move semantics (moving the reference, not the value). If a mutable reference
-to a value exists, we say the mutable reference borrows the value as mutable.
+```rust
+let string: String = String::from("Hello!");
+let string_reference: &String = &value;
+let another_string_reference = &value;
+let number: i32 = 12;
+let number_reference: &i32 = &number;
+let number_copy: i32 = *number_reference; // can only dereference inner type with copy semantics
+```
 
-You can create a reference of any value so long as that value is not borrowed as
-mutable. You can create a mutable reference of any value so long as that value
-is not borrowed.
+References allow you to pass the same value with move semantics to a function
+multiple times. Something you could not do with only move semantics without
+explicitly returning the value from each call.
 
-A reference cannot outlive the value it borrows as this would allow a use after
-free memory error, thus a value cannot be dropped while a reference to it
-exists.
+```rust
+fn print_string(s: &String) {
+    println!("{s}");
+}
+fn main() {
+    let string = String::from("Hello, world!");
+    print_string(&string);
+    print_string(&string);
+    print_string(&string);
+}
+```
 
-Because of the restrictions that references place on a value (dropping, creation
-of mutable references), we say all references have a lifetime. This lifetime is
-the duration for which those restrictions are applied. In some circumstances
-lifetimes can be named, a lifetime named `lt` is written `&'lt ___` or
-`&'lt mut ___`. One special named lifetime exists by default: `'static`.
-References with this lifetime are held for the entire duration of the program
-(and thus the value they point to is never dropped).
+```
+Hello, world!
+Hello, world!
+Hello, world!
+```
 
-There are two possible sizes a reference can have, depending on the type of the
-borrowed value. If the borrowed value is a sized type, references to it will
-have the same size as `usize`, storing a pointer to the value in memory.
+We also have two more patterns for use with references. The first destructures a
+reference similarly to the `*` operator, but on the pattern side rather than on
+the value side. The other one introduces a reference similar to the `&` operator
+but on the pattern side.
 
-If the borrowed value is an unsized type, references to it will have twice the
-size of `usize`, with half storing a pointer to the value in memory, and the
-other half storing the size of the value. This ability for references to borrow
-unsized types with a known size solves the problem from the previous section,
-we cannot store a `str` or slice `[T]` directly in a variable, but we can store
-a reference to them!
+```rust
+let number: i32 = 12;
+let ref number_reference: i32 = number; // creates a reference similar to `&number`
+let &number_copy: &i32 = number_reference; // destructures the reference similar to `*number_reference`
+```
+
+Notice the types included in the let statement match the type of the expression
+(on the right side of the `=`), not of the variables created by the pattern.
+`number_reference` in the above is still of type `&i32`, and `number_copy` is
+still of type `i32`. This is true for all patterns in let expressions, it's just
+less obvious and feels weirder when you use it with `&` and `ref` patterns.
+
+```rust
+let array: [i32; 4] = [1, 2, 3, 4];
+let [p, q, r, s]: [i32; 4] = array;
+```
+
+You could obviously also just exclude the types from the above examples and Rust
+will figure out what you want just fine.
+
+These patterns may not feel immediately useful, but consider the case where we
+have a reference to an array, and want to destructure a reference to a single
+value in that array without copying its contents. We can do this using the above
+pattern.
+
+```rust
+let array = [1, 2, 3, 4];
+let ref_array = &array;
+let &[_, ref q, ..] = ref_array; // q = &array[1] = &2
+```
+
+The above desire, of extracting a reference through destructuring, is so common
+that about a year after Rust hit version 1.0 the identifier pattern was extended
+to support it[^1]. By default, an identifier will move (or copy if the value has
+copy semantics) its binding, however if the value being matches is a reference
+and the pattern does not have an explicit reference destructure, then Rust adds
+the `ref` pattern for you behind the scenes.
+
+```rust
+let [_, q, ..] = ref_array; // As before, q = &array[1] = &2
+```
+
+### Mutable References
+
+The second reference type, `&mut T`, is called a mutable reference and provides
+read and write access. Only one such mutable reference to a value may exist at a
+time. A mutable reference cannot coexist with an immutable reference. `&mut T`
+always has move semantics (moving the reference, not the value). If a mutable
+reference to a value exists, we say the mutable reference borrows the value as
+mutable.
+
+```rust
+let mut x = 12; // `x` must be `mut` to make `&mut`
+let ref_x = &mut x;
+*ref_x += 10; // we can mutate through dereferencing
+println!("{x}")
+```
+
+```
+22
+```
+
+We also have two new patterns for working with mutable strings, `&mut` for
+destructuring and `ref mut` to introduce a mutable reference. These work the
+same as their immutable reference counterparts, including with the automatic
+reference creation when your pattern doesn't destructure a reference which is
+present.
+
+```rust
+let mut array = [1, 2, 3, 4];
+let ref_array = &mut array;
+let &mut [_, ref mut q, ..] = ref_array; // or equivalently
+let [_, q, ..] = ref_array; // q = &mut array[2]
+*q += 10;
+println!("{array:?}");
+```
+
+```
+[1, 12, 3, 4]
+```
+
+Mutable references cannot be coppied, which you may think means they cannot
+be used to pass a value to a function multiple times. However, because of a
+convenience called "automatic reborrowing" this is not the case.
+
+```rust
+fn exclaim_and_say(s: &mut String) {
+    s.push_str("!"); // mutate in place
+    println!("{s}");
+}
+fn main() {
+    let mut x = String::from("Hello, world");
+    let ref_x = &mut x;
+    exclaim_and_say(ref_x); // this should move ref_x
+    exclaim_and_say(ref_x); // so this should not compile
+}
+```
+
+```
+Hello, world!
+Hello, world!!
+```
+
+So... how did that work? Automatic reborrowing means that whenever a mutable
+reference is passed into a function, if it can Rust will create a new mutable
+reference to pass in instead, preserving your old one. This allows `&mut T` to
+pretend to have copy semantics when being passed into functions. There are other
+circumstances where reborrowing is not possible however, so it's important to
+remember that this is a convenience and `&mut T` actually does have move
+semantics under the hood.
 
 ```rust
 fn main() {
-    let x: [i32; 6] = [1, 4, 65, -110, 75, 93];
-    println!("How many numbers would you like? [1 to 6]");
-    let y: usize = read_number();
-    let z: &[i32] = &x[0..y]; // unsized slice in a variable!
-    println!("Here are your numbers: {z:?}");
-}
-
-/// Function included only to make this example work,
-/// please don't worry about what it's doing!
-fn read_number() -> usize {
-    let mut buf = String::new();
-    std::io::stdin().read_line(&mut buf).unwrap();
-    buf.trim().parse().unwrap()
+    let mut x = String::from("Hello, world");
+    let ref_x = &mut x;
+    exclaim_and_say(&mut *ref_x); // manual reborrow for illustration
+    exclaim_and_say(&mut *ref_x);
 }
 ```
 
-This should help explain the string literals from our last lesson. A string
-literal creates a value of the type `&'static str`. `str` because it is a valid
-UTF-8 unicode string, `&'static` because the string value is written into the
-binary and never dropped. Because these are an immutable reference they have
-copy semantics as you saw.
+### Statics and Reference Lifetimes
 
-Pointers, usually called "raw pointers" in Rust, exist both for interoperability
-with C and to allow implementing custom types that perform their own memory
-management (the standard library has many of these). These types are `*const T`
-and `*mut T`. They do not have lifetimes, and do not enforce thr same
-restrictions as their reference counterparts. They are easy to create from
-references, but cannot be read from, written to, or converted back into
-references without using the `unsafe` keyword and promising Rust that you have
-upheld its memory and thread safety guarantees despite them not being enforced.
-
-## Slices Again, and Range Syntax
-
-Now that you know about pointers, lets circle back around to slices. They are
-typically created using range syntax `a..b` and an array or similarly indexable
-data structure. Ranges are a data structure in their own right (actually 6) and
-are one of the worst designed things in Rust. Everybody hates them and agrees we
-designed them badly. Somehow they snuck into Rust 1.0 and now we're stuck with
-them for backwards compatability reasons. There are 6 ways to create a Range, 6
-types that will be created, and far too little interoperability between them.
+Both mutable and immutable references have an additional piece of information
+bound to them called a lifetime. A lifetime is a guard that prevents dropping
+or otherwise moving out the value being referenced by the lifetime. This ensures
+that a reference always points to valid data. Consider the following example:
 
 ```rust
-let a: std::ops::Range = 5..12; // 5 ≤ x < 12
-let b: std::ops::RangeFrom = 9..; // 9 ≤ x
-let c: std::ops::RangeTo = ..6; // x < 6
-let d: std::ops::RangeFull = ..; // completely unbounded
-let e: std::ops::RangeInclusive = 8..=16; // 8 ≤ x ≤ 16
-let f: std::ops::RangeToInclusive = ..=14; // x ≤ 14
+let x = String::from("Hello!");
+let y = &x;
+drop(x);
+println!("{y}");
 ```
 
-Ranges can be used in a few places, but the only place you will see all 6 of the
-above used is in creating slices. In this context, they are used as an index to
-an array, a slice, or another similar data structure (such as a `Vec`, which
-we'll cover in a future lesson).
-
-```rust
-let x: [i32; 6] = [1, 4, 65, -110, 75, 93];
-let y: &[i32] = &x[..]; // slice the whole of x
-let z: &[i32] = &y[1..=3]; // slice the elements with indexes in the range 1 ≤ x ≤ 3
 ```
-
-Slices can also be broken down using slice patterns, but you must include the
-rest pattern `..` for the pattern to be irrefutable (again, we'll get to
-refutable patterns eventually) because you cannot know its length.
-
-```rust
-let x: [i32; 6] = [1, 4, 65, -110, 75, 93];
-let y: &[i32] = &x[..];
-let [head, tail @ ..] = y; // head = 1, tail = &[4, 65, -110, 75, 93]
-```
-
-## Functional Types
-
-When you create a function you also create a unit type representing that
-function, which has a value identified by the function name. This unit value
-can be assigned to a variable and called the same as one might call the
-function, but the type cannot be named and must only be inferred.
-
-```rust
-fn main() {
-    let my_fn = add_one;
-    println!("{}", my_fn(4))
-}
-
-fn add_one(x: i32) -> i32 {
-    x + 1
-}
-```
-
-If you do want to prescribe a type, you can coerce a function unit value into a
-function pointer. This has size equivalent to `usize` instead of having zero
-size like the function unit value, and it's value is the memory address where
-the function is stored. Function pointer types are written `fn(params) -> ret`.
-
-```rust
-fn main() {
-    let my_fn: fn(i32) -> i32 = add_one;
-    println!("{}", my_fn(4))
-}
-
-fn add_one(x: i32) -> i32 {
-    x + 1
-}
-```
-
-## User Defined Types
-
-There are three kinds of user defined types: structs, enums, and unions.
-Structs and enums are extremely useful. Unions exist mostly for C interop.
-
-### Structs
-
-There are three types of struct definition: unit structs, tuple structs, and
-named field structs.
-
-The first of the three allows custom user defined unit types. These are useful
-for representing trivial state with custom implementations (more on this next
-lesson).
-
-```rust
-struct MyUnitStruct;
-
-fn main() {
-    let x = MyUnitStruct;
-}
-```
-
-The second of the three allows custom tuple structs, which behave like tuples
-with numeric index keys and destructuring, but act as an independent type with
-their own implementations.
-
-```rust
-struct MyTupleStruct(i32, char);
-
-let x = MyTupleStruct(-16, 'L');
-let a = x.0; // a == -16
-let b = x.1; // b == 'L'
-```
-
-And a new pattern for destructuring it, which works exactly like the tuple
-pattern but for tuple structs.
-
-- The tuple struct pattern `TupleStruct(comma_separated_patterns)` matches
-  tuple struct values and destructures them.
-
-```rust
-let MyTupleStruct(a, b) = x; // a == -16, b == 'L'
-```
-
-The final of the three, and most commonly seen, is a named field struct. It has
-no equivalent primitives type, but you can think of it as a tuple with named
-fields.
-
-```rust
-struct MyFieldStruct {
-    my_number: i32,
-    my_letter: char,
-}
-
-let x = MyFieldStruct {
-    my_number: 24,
-    my_letter: 'K',
-};
-let a = x.my_number; // a == 24
-let b = x.my_letter; // b == 'K'
-```
-
-And another new pattern for destructuring it:
-
-- The struct pattern `Struct { field: pattern, .. }` matches named field struct
-  values and destructures them.
-
-You can also use a dirty syntax hack that is designed to look like the rest
-pattern but isn't actually a pattern (because you can't use the `ident @ ..`
-pattern with it).
-
-```rust
-let MyFieldStruct {
-    my_number: a,
-    my_letter: b
-} = x; // a == 24, b == 'K'
-```
-
-### Unions
-
-In almost a decade of writing and using Rust code I have never needed a union.
-If you do need them, then you're either doing C interop and already know what
-you are doing, or you're wrong and should use another data structure instead.
-
-Almost always that data structure is enums. Or it's `std::mem::transmute`.
-
-### Enums
-
-Enums in Rust are not like in most other languages. They can be, as you will
-see, but typically they are used in a way that is significantly more poweful.
-
-There are three types of enum in Rust: C-like enums, sum type enums, and
-zero-variant enums.
-
-C-like enums work like the enums in most languages, providing an association
-between a number and a named value.
-
-```rust
-enum CLikeEnum {
-    ImplicitZero, // Defaults to `= 0`
-    First, // Continues as `= 1`
-    Second = 2, // Explicit number
-    Tenth = 10, // Can skip ahead
-}
-
-fn main() {
-    let e = CLikeEnum::Second;
-    let n = e as i32;
-}
-```
-
-Sum type enums allow you to define a type that has multiple possible mutually
-exclusive states called variants. Variants, like structs, can be unit, tuple, or
-named field variants.
-
-```rust
-enum SumTypeEnum {
-    MyUnitVariant,
-    MyTupleVariant(i32, char),
-    MyNamedFieldVariant {
-        my_str: &'static str,
-        my_bool: bool,
-    }
-}
-
-fn main() {
-    let mut a: SumTypeEnum = SumTypeEnum::MyUnitVariant;
-    a = SumTypeEnum::MyTupleVariant(-8, 'g');
-    a = SumTypeEnum::MyNamedFieldVariant {
-        my_str: "Example!",
-        my_bool: true,
-    };
-}
-```
-
-There are also patterns that can destructure enums, but we are going to have to
-talk about refutable patterns finally. Actually, technically you can use
-irrefutable patterns to destructure an enum, but you have a strict condition and
-a new pattern:
-
-- Or patterns `pattern_a | pattern_b` can match either pattern. Both patterns
-  must produce identical variables (in name and type).
-
-Because of the restriction that both sides must produce the same variable in
-name and type, you are quite restricted in how you can use this with enums, but
-you could do the following:
-
-```rust
-enum Silly {
-    HasANumber(i32, char),
-    AlsoHasANumber {
-        num: i32,
-        float: f32,
-    }
-}
-
-let x = Silly::HasANumber(12, 'c');
-let (Silly::HasANumber(n, _) | Silly::AlsoHasANumber { num: n, .. }) = x;
-```
-
-Struct syntax also has a convenience to make your life easier. If you want to
-bind a variable with the same name as a field, instead of doing
-
-```rust
-let Struct { field: field } = Struct { field: 12 };
-```
-
-You can instead ommit the `: field`.
-
-```rust
-let Struct { field } = Struct { field: 12 };
-```
-
-## Refutable Patterns
-
-So far, I've only shown you irrefutable patterns. This means that the pattern
-can always bind to a value provided the value is of the correct type. It is also
-possible to construct patterns where the value _might_ be able to match, but it
-also might not. A trivial example of this introduces a new pattern:
-
-- Range patterns `start..end` match scalar values within their defined bounds.
-
-```rust
-let x = 8;
-let bigger_than_four @ 4.. = x;
-```
-
-```text
-error[E0005]: refutable pattern in local binding
- --> src/main.rs:3:9
+   Compiling playground v0.0.1 (/playground)
+error[E0505]: cannot move out of `x` because it is borrowed
+ --> src/main.rs:5:6
   |
-2 |     let bigger_than_four @ 4.. = x;
-  |         ^^^^^^^^^^^^^^^^ pattern `i32::MIN..=3_i32` not covered
+1 | let x = String::from("Hello!");
+  |     - binding `x` declared here
+2 | let y = &x;
+  |         -- borrow of `x` occurs here
+3 | drop(x);
+  |      ^ move out of `x` occurs here
+4 | println!("{y}");
+  |           --- borrow later used here
 ```
 
-Ah fun, a compiler error. You can see the error is quite elegantly explaiend
-though. Even though we know that our `x` in this instance is bigger than 4, the
-compiler has no guaruntees that `x` is bigger than four, and so there is no
-coverage of the case where `x` is between the smallest possible `i32`, and 3.
+Here you can see that Rust prevents us from dropping (moving out) `x`, because
+there is a borrow still outstanding.
 
-There are two new syntax elements we can use to resolve this.
+Lifetimes can be named, but by default all but one lifetime is anonymous and
+does not have a fixed name that can be referred to. They are generated by the
+compiler to be as short as possible, so that you can drop the resource being
+referenced as early as possible.
 
-### If Let Expressions
-
-An if let statement has the following form:
+The one special named lifetime is called `'static`, which refers to a lifetime
+which never drops. This allows the compiler to reason about references that know
+the value they reference will never go out of scope. This is the type of string
+literals, as the raw bytes of their string are written into the binary and will
+never be cleaned up by the program.
 
 ```rust
-if let refutable_pattern = expression {
-    /* block contents */
-} else {
-    /* block contents */
+let s: &'static str = "String literal with static lifetime!";
+```
+
+You can also create other static references by placing data in a `static`.
+
+```rust
+static DATA: [i32; 4] = [1, 2, 4, 8];
+let d: &'static i32 = &DATA[2]; // d = &4
+```
+
+This may not seem obviously clear or useful to you right now, but within a few
+lessons you should have a stronger grasp over lifetimes.
+
+## Structs
+
+I've shown you how you can group together types using a tuple, but sometimes you
+want to encode a little bit more information. After all, `.0` isn't the most
+informative accessor I've ever seen. Structs are the solution to this.
+
+```rust
+struct MyData {
+    my_character: char,
+    my_number: i32,
+}
+let my_data: MyData = MyData {
+    my_character: 'q',
+    my_number: 94,
+};
+let a = my_data.my_character; // a = 'q';
+let b = my_data.my_number; // b = 94
+```
+
+If the value you want to put in a struct is already in a variable with the same
+name as the struct field, you can ommit the `: value`.
+
+```rust
+let my_character = 'X',
+let my_data = MyData {
+    my_character, // equivalent to `my_character: my_character`
+    my_number: 12,
 }
 ```
 
-The else block is optional.
-
-This allows us to do the following:
+We also have a struct pattern which can be used to destructure this.
 
 ```rust
-let x = 8;
-if let 4.. = x {
-    println!("The number {x} was equal to or bigger than four!");
-} else {
-    println!("The number {x} was smaller than four");
-}
+let MyData {
+    my_character: a,
+    my_data: b,
+} = my_data; // a = 'q', b = 94
 ```
 
-Obviously this is a contrived example, and you shouldn't actually do that, you
-would just do `if x >= 4 {}` in real code, but you _can_ do it with pattern
-matching instead if you want to make your colleagues hate you.
-
-A more useful example of this syntax comes from using struct and tuple struct
-patterns to break down a refutable enum.
+The values after the `:` inside the struct pattern are themselves patterns.
 
 ```rust
-enum IntOrFloat {
-    Num(i32),
-    Float {
-        f: f32,
+let MyData {
+    my_character: ref a,
+    my_data: _,
+} = my_data; // a = &my_data.my_character = &'q'
+```
+
+In addition to this, you can use syntax that intentionally resembles the rest
+pattern if you have many fields and only want to grab some of them.
+
+```rust
+struct BigStruct {
+    integer: i32,
+    boolean: bool,
+    character: char,
+    real: f32,
+}
+let my_struct = BigStruct {
+    integer: 12,
+    boolean: true,
+    character: 'Q',
+    real: 6.5,
+};
+let BigStruct { integer: a, .. } = my_struct; // a = 12
+```
+
+If you want to name the variable you create the same thing as one of the fields,
+you do not need to write `field_name: field_name`.
+
+```rust
+let BigStruct { real: real, .. } = my_struct; // equivalent to
+let BigStruct { real, .. } = my_struct; // real = 6.5
+```
+
+## Generic Types
+
+You can give your structs generic type parameters, allowing the user of your
+struct to determine a type inside one of its fields. This is useful for types
+like `Vec<T>`, which store a kind of dynamically sized array (more on these in
+a later lesson): `Vec<i32>` gives you a dynamic array of integer, `Vec<String>`
+gives you a dynamic array of strings.
+
+You can create your own generic parameters, and put them on both structs and
+functions. When working with types, you can simply put the `<T>` adjacent to the
+type. When calling functions you must use "turbofish" syntax `::<T>`, due to a
+syntax ambiguity in the Rust language which would be present without this.
+
+```rust
+struct MyWrapper<T> {
+    data: T,
+    number: usize,
+}
+fn wrap_data<T>(data: T, number: usize) -> MyWrapper<T> {
+    MyWrapper {
+        data,
+        number
     }
 }
+let x: MyWrapper<char> = wrap_data::<char>('Q', 12);
+let x: MyWrapper<_> = wrap_data::<_>('Q', 12); // `_` gives generic type inferrence
+let x = wrap_data('Q', 12); // Rust can of course infer *all* the types instead
+let c = x.data; // c: char = 'Q'
+```
 
-let x = IntOrFloat::Num(12);
+When you create a concrete version of these types, such as `MyWrapper<char>` in
+the above, Rust generates a new struct or function with the generic substituted
+for your concrete type. This is called "monomorphisation". Essentially creating
+the following:
 
-if let IntOrFloat::Float { f } = x {
-    println!("We have a float: {f}!");
-} else if let IntOrFloat::Num(n) = x {
-    println!("We have an integer: {n}!");
+```rust
+struct MyWrapper<char> {
+    data: char,
+    number: usize
+}
+fn wrap_data<char>(data: char, number: usize) -> MyWrapper<char> {
+    MyWraper<char> {
+        data,
+        number
+    }
 }
 ```
 
-Also note that If Lets are expressions and not statements, this means you can
-use them in an expression position, and they will evaluate to the last
-expression in the appropriate block.
+## Generic Lifetimes
+
+Just like you can add generic types to your structs and functions, you can add
+generic lifetimes. This is useful as it enables you to name the nomrally
+anonymous lifetimes, which is necessary to store them inside a struct for
+example.
 
 ```rust
-let my_float = if let IntOrFloat::Float { f } = x {
-    println!("We have a float: {f}!");
-    f
-} else if let IntOrFloat::Num(n) = x {
-    return Error(format!("We have an integer: {n}! That's bad!"));
+struct TwoResources<'a, 'b> {
+    first: &'a i32,
+    second: &'b i32
+}
+```
+
+The above struct for example references resources with two different lifetimes.
+While an instance of the struct exists neither of those lifetimes can expire.
+For the purpose of generic parameters `'_` instructs Rust to infer the anonymous
+local lifetime.
+
+```rust
+static STATIC: i32 = 18;
+let local: i32 = 24;
+let two_resources: TwoResources<'static, '_> = TwoResources {
+    first: &STATIC,
+    second: &local
 };
 ```
 
-### Let Else Statements
-
-Sometimes, you are fairly confident the refutable pattern will be a certain
-form, or you otherwise simply want to return an error if a value does not match
-the pattern you expect it to. In this instance you can use a let else statement.
+Another useful reason for lifetime generics naming lifetimes is it allows you to
+disambiguate from a type signature which lifetimes will persist in the return
+from a function.
 
 ```rust
-let refutable_pattern = expression else {
-    /* block */
+fn first_string<'a, 'b>(string_a: &'a String, string_b: &'b String) -> &'a String {
+    string_a
 }
+
+let x = String::from("First resource");
+let y = String::from("Second resource");
+let z = first_string(&x, &y);
+drop(y);
+drop(x);
+println!("{z}");
 ```
 
-This makes writing the above error handling with our float much simpler! Though
-we do lose the ability to use else if and destructure the alternative case.
+In the above, without knowing the internals of the function (if it was a closed
+source library you were linking to, for example), you still know that `z` has
+a lifetime which matches the lifetime of the first parameter, not the second
+parameter: just from it's public function signature. Rust can also reason about
+this, and so `drop(y)` does not cause a compilation error, but `drop(x)` does!
 
-```rust
-let IntOrFloat::Float { f } = x else {
-    return Error(format!("We have an integer, That's bad!"));
-}
-println!("We have a float: {f}!");
+```
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> src/main.rs:10:6
+   |
+6  | let x = String::from("First resource");
+   |     - binding `x` declared here
+7  | let y = String::from("Second resource");
+8  | let z = first_string(&x, &y);
+   |                      -- borrow of `x` occurs here
+9  | drop(y);
+10 | drop(x);
+   |      ^ move out of `x` occurs here
+11 | println!("{z}");
+   |           --- borrow later used here
 ```
 
-### Match Expressions
-
-Match expressions are great when you want to handle all the possible cases, and
-are a lot less cumbersome than using if let else if let for the equivalent,
-especially when you have many possible cases to provide a pattern for.
-
-```rust
-match expression {
-    pattern_a => expression_a,
-    patterb_b => expression_b,
-    ...
-}
-```
-
-For example, replicating our expression from earlier.
-
-```rust
-let my_float = match x {
-    IntOrFloat::Float { f } => {
-        println!("We have a float: {f}!");
-        f
-    },
-    IntOrFloat::Num(n) => {
-        return Error(format!("We have an integer: {n}! That's bad!"));
-    }
-};
-```
-
-## Generics
-
-User defined types can have generic type parameters. These allow for types
-inside the UDT to be defined by the user of the UDT, rather than by the UDT
-itself.
-
-```rust
-struct MyDataStruct<T> {
-    my_num: i32,
-    my_data: T,
-}
-enum Choice<A, B> {
-    First(A),
-    Second(B),
-    Neither,
-    Both {
-        first: A,
-        second: B
-    }
-}
-fn main() {
-    let x: MyDataStruct<char> = MyDataStruct {
-        my_num: 17,
-        my_data: 'G',
-    };
-    let y: Choice<f64, MyDataStruct<char>> = Choice::Second(x);
-}
-```
-
-In the above, `Choice<f64, MyDataStruct<char>>` essentially creates the
-following type:
-
-```rust
-struct MyDataStruct<char> {
-    my_num: i32,
-    my_data: char,
-}
-enum Choice<f64, MyDataStruct<char>> {
-    First(f64),
-    Second(MyDataStruct<char>),
-    Neither,
-    Both {
-        first: f64,
-        second: MyDataStruct<char>,
-    }
-}
-```
-
-User defined types can also have generic lifetimes. This allows them to store
-references.
-
-```rust
-struct HoldsAReference<'a> {
-    ref_to_number: &'a i32,
-}
-```
-
-If the number is static, you will have a `HoldsAReference<'static>`. If it has
-some other lifetime (which are almost always anonymous), then you will have a
-`HoldsAReference<'some_unnamed_anonymous_lifetime>`.
+[^1]:
+    You can learn more about this in the RFC that made this change [here][rfc],
+    though it motivates it with syntax and examples that I have not taught you
+    yet.
 
 [repr]: https://doc.rust-lang.org/reference/type-layout.html#the-default-representation
 [unicode]: https://www.unicode.org/glossary/#unicode_scalar_value
+[rfc]: https://rust-lang.github.io/rfcs/2005-match-ergonomics.html

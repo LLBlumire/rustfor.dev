@@ -81,12 +81,4 @@
     :is(.token.lifetime-annotation.symbol) {
     @apply text-yellow-400;
   }
-  .site-prose
-    :where(code):not(:where([class~="not-prose"] *))
-    :is(
-      .token.class-name + .token.operator,
-      .token.class-name + .token.operator ~ .token.operator
-    ) {
-    @apply text-neutral-100;
-  }
 }
