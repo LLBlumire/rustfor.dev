@@ -14,168 +14,338 @@ In Rust, all values have exactly one type. This type defines the space a value
 will take up (which is needed to allocate that space for it in memory, typically
 on the stack), and which possible memory values can occupy this space.
 
-Types are used in two main places: variable declarations, and function
-signatures. I'll talk more about function signatures later in this article, but
-it will be useful for you to understand simple variable declarations right away.
+The Rust compiler is very good at inferring types from context for you. Often
+you will only need to explicitly state your types in a function signature (as
+here they are required so that you can build a stable API).
 
-## Let Statements
+## Let Statements and Patterns
 
-It's time for me to formally introduce you to your first piece of Rust syntax.
-I used them last lesson, but in a way that will have lulled you into a false
-sense of familiarity.
-
-```rust
-let irrefutable_pattern: Type = expression;
-```
-
-You'll notice I say "irrefutable pattern" and not "variable name". Patterns are
-how new variables are declared in Rust, they come in two varieties: refutable
-and irrefutable. We'll talk more about refutable patterns later, but for the
-time being all the patterns I introduce will be irrefutable. Lets start with
-two simple patterns.
-
-- An identifier pattern `ident` matches any value, creates a new variable and
-  binds the value to the variable. Values are moved into this identifier (unless
-  they have copy semantics, of course).
-- The wildcard pattern `_` matches any value and ignores it.
+I've used this before in our previous lesson, but the way I used them will have
+lulled you into a false sense of familiarity.
 
 ```rust
-let my_ident = 7; // `my_ident` matches `7` and binds it
-let _ = 12; // `_` matches `12` and ignores it
+let pattern = expression; // type is inferred
+let pattern: Type = expression; // type is explicit
 ```
 
-It's also important to understand that you can ommit
-the <code>:&nbsp;Type</code>, if Rust can infer the type from other contexts
-(such as the value of the expression already having a single appropriate type).
-It is typical to only write the type in a let expression if the compiler
-complains at you for not doing it.
+You'll notice I say "pattern" and not variable name on the left. This is because
+whenever new variables are introduced in Rust, it is not done through simple
+variable declaration as you may be familiar with from other languages.
+
+Patterns are very powerful, and allow you to do all kinds of powerful things
+like destructuring and pattern matching. There will be more details on the
+many different things you can do with patterns over the next few chapters.
+
+For now, know that if you encounter an identifier in a pattern, which is
+basically any valid variable name, it will create a new variable, allocate
+memory for it based on the size of the type of the variable being created, and
+bind all or some part of the value the expression on the right hand side of the
+`=` evaluates to.
+
+```rust
+let x = 12; // creates `x` as an `i32`, binds 12 to `x`
+let z = 'x'; // creates `z` as a `char`, binds 'x' to `x`
+```
+
+I'll teach you your first complex pattern already! The wildcard pattern. This
+pattern matches any single value from the expression and ignores it.
+
+```rust
+let _ = "Hello, world!"; // creates no variable, binds nothing
+```
+
+This is useful if you have a function that returns data, but you wish to discard
+the data without the compiler complaining at you for having an unused return
+value.
+
+Another pattern that is useful is the `mut identifier` pattern. By default, all
+variables created are immutable and cannot be reassigned or mutated in place. By
+using the `mut identifier` pattern you bypass this.
+
+The following fails to compile.
+
+```rust
+let x = 12;
+x = 9; // reassignment
+x += 8; // mutation
+println!("{number}");
+```
+
+```
+error[E0384]: cannot assign twice to immutable variable `number`
+ --> src/main.rs:3:5
+  |
+1 |     let number = 12;
+  |         ------
+  |         |
+  |         first assignment to `number`
+  |         help: consider making this binding mutable: `mut number`
+2 |     number = 9; // reassignment
+  |     ^^^^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `number`
+ --> src/main.rs:4:5
+  |
+1 |     let number = 12;
+  |         ------
+  |         |
+  |         first assignment to `number`
+  |         help: consider making this binding mutable: `mut number`
+2 |     number = 9; // reassignment
+3 |     number += 8; // mutation
+  |     ^^^^^^^^^^^ cannot assign twice to immutable variable
+```
+
+But by using `mut number` we can make the `number` variable mutable, and it will
+compile and run successfully instead.
+
+```rust
+let mut number = 12;
+number = 9;
+number += 8;
+println!("{number}");
+```
+
+```
+17
+```
+
+Note that while you cannot reassign a variable, you can "shadow" it by using A
+new `let` statement. This creates a new variable instead and gives it the name
+the old one had.
+
+```rust
+let number = 12;
+let number = 9;
+println!("{number}");
+```
+
+```
+9
+```
 
 ## Fixed Size Primitive Types
 
-Now lets move onto some real types, the following is a summary of Rusts fixed
-size primitive types, their size in bytes, and their legal values.
+Now that you know how to assign a variable, lets look at the simplest data types
+a variable might have. These are the fixed size primitive types. They take up a
+fixed amount of space, and have well defined restrictions on which values are
+legal.
 
-| Type    | Size | Values                                                                               |
-| :------ | :--: | :----------------------------------------------------------------------------------- |
-| `!`     |  0   |                                                                                      |
-| `()`    |  0   | `()`                                                                                 |
-| `bool`  |  1   | `true` as `0x01`, `false` as `0x00`                                                  |
-| `u8`    |  1   | Natural numbers from $0$ to $2^{8}-1$                                                |
-| `i8`    |  1   | Integers from $-(2^{7})$ to $2^{7}-1$                                                |
-| `u16`   |  2   | Natural numbers from $0$ to $2^{16}-1$                                               |
-| `i16`   |  2   | Integers from $-(2^{15})$ to $2^{15}-1$                                              |
-| `u32`   |  4   | Natural numbers from $0$ to $2^{32}-1$                                               |
-| `i32`   |  4   | Integers from $-(2^{31})$ to $2^{31}-1$                                              |
-| `f32`   |  4   | All IEEE 754-2008 binary32 format values (754-1985 single precision float)           |
-| `char`  |  4   | Any unicode scalar value in the `0x0000` to `0xD7FF` or `0xE000` to `0x10FFFF` range |
-| `u64`   |  8   | Natural numbers from $0$ to $2^{64}-1$                                               |
-| `i64`   |  8   | Integers from $-(2^{63})$ to $2^{63}-1$                                              |
-| `f32`   |  8   | All IEEE 754-2008 binary64 format values (754-1985 dounle precision float)           |
-| `u128`  |  1   | Natural numbers from $0$ to $2^{128}-1$                                              |
-| `i128`  |  1   | Integers from $-(2^{127})$ to $2^{127}-1$                                            |
-| `usize` |  \*  | As per `u16`, `u32`, or `u64` depending on target platform's pointer type            |
-| `isize` |  \*  | As per `i16`, `i32`, or `i64` depending on target platform's pointer type            |
+| Type    | Size | Values                                                                       |
+| :------ | :--: | :--------------------------------------------------------------------------- |
+| `!`     |  0   |                                                                              |
+| `()`    |  0   | `()`                                                                         |
+| `bool`  |  1   | `0x00` meaning `false`, and `0x01` meaning `true`                            |
+| `u8`    |  1   | Natural numbers from $0$ to $2^{8}-1$ (unsigned 8 bit integers)              |
+| `i8`    |  1   | Integers from $-(2^{7})$ to $2^{7}-1$ (signed 8 bit integers)                |
+| `u16`   |  2   | Natural numbers from $0$ to $2^{16}-1$ (unsigned 16 bit integers)            |
+| `i16`   |  2   | Integers from $-(2^{15})$ to $2^{15}-1$ (signed 16 bit integers)             |
+| `u32`   |  4   | Natural numbers from $0$ to $2^{32}-1$ (unsigned 32 bit integers)            |
+| `i32`   |  4   | Integers from $-(2^{31})$ to $2^{31}-1$ (signed 32 bit integers)             |
+| `f32`   |  4   | IEEE 754-2008 binary32 format values (IEEE 754-1985 single precision floats) |
+| `char`  |  4   | Any single [unicode scalar value][unicode].                                  |
+| `u64`   |  8   | Natural numbers from $0$ to $2^{64}-1$ (unsigned 64 bit integers)            |
+| `i64`   |  8   | Integers from $-(2^{63})$ to $2^{63}-1$ (signed 64 bit integers)             |
+| `f64`   |  8   | IEEE 754-2008 binary64 format values (IEEE 754-1985 dounle precision floats) |
+| `u128`  |  1   | Natural numbers from $0$ to $2^{128}-1$ (unsigned 128 bit integers)          |
+| `i128`  |  1   | Integers from $-(2^{127})$ to $2^{127}-1$ (signed 128 bit integers)          |
+| `usize` |  \*  | As per `u16`, `u32`, or `u64` depending on target platform's pointer type    |
+| `isize` |  \*  | As per `i16`, `i32`, or `i64` depending on target platform's pointer type    |
 
 _\*the `usize` and `isize` types have a platform specific size. For a 32 bit
 computer they will be 4 bytes large, for a 64 bit computer they will be 8 bytes
-large_
+large. 16 bit architectures are officially supported, but often require extra
+work as most libraries do not support them._
 
-Two types above seem more odd, and not as self explanatory as the others. These
-are the two with zero size. `()` is pronounced "unit" and is a type with only
-one value, also called `()` "unit". This type takes up no space, as anywhere the
-compiler encounters this type it can work with it without needing to store any
-value (as it knows the value without storing it).
-
-The most common place you will encounter `()` is as the return type from
-functions and expressions that return no data. It is similar to `void` in other
-languages.
-
-The other type, `!`, is pronounced "never", and it cannot be constructed.
-Anywhere the compiler encounters a value of this type it can assume is
-unreachable code, as no value of this type exists.
-
-The most common place you will encounter `!` is as the return type from
-functions that loop infinitely and never terminate or where execution branches.
-
-All the other types can be constructed and represented in code simply as their
-numeric representation, or a character in single quotes for the `char` type.
-Numeric literals can be suffixed with their type to inform the compiler of your
-intention, otherwise integer literals will infer `i32` as their type, and float
-literals will infer `f32` as their type.
+If you want to tell Rust which numeric type to use for an integer or float
+without using a let binding with explicit type, you can suffix the literal with
+the type. With no suffix or typed binding integers will be `i32` and floats will
+be `f32`.
 
 ```rust
-let u = (); // `u: ()` is inferred
 let b: bool = true;
 let n: u8 = 56;
-let p = 81u8; // `p: u8` is inferred from the expression type
+let p = 81u8;
 let s: i8 = -9;
-let i = 93; // `i: i32` is inferred
-let f = 12.4; // `f: f32` by default
-let c = 'z'; // `c: char` is inferred
-let x = loop { }; // loops forever, `x` is never assigned to, `x: !` inferred
+let i = 93; // infers i32 by default
+let f = 12.4; // infers f32 by default
+let c = 'z';
 ```
 
-## Sequence Types
+You'll notice there are two fixed size primitive types that I've not included
+in the above list, and that's because these will be less familiar to you unless
+you are coming from a small handful of functional languages.
 
-In addition to the above fixed size primitive types, Rust provided us with some
-sequence types.
+`()`, the "Unit" type, is a type with only one value: `()`. Because the type
+only has one value, it needs 0 bytes of information to store this value.
+Anywhere the unit type occurs, it's value is already known.
 
-### Arrays
-
-Arrays allow you to store a fixed size sequence of a type adjacent to each.
-other in memory. We denote this `[T; N]`, such that `[i32; 4]` takes up 16 bytes
-of memory. You can access the parts of an array through numeric indices starting
-at 0.
+This type is seen most often as a kind of `void` return type. Indicating that a
+function did not return any meaningful data, but did terminate normally and
+return control to its caller. If you create a function with no explicit return
+type then a type of `-> ()` is implicit. In addition, any expression terminated
+with a `;` evaluates to `()`.
 
 ```rust
-let x = [122, -68, 70, 32]; // infers `x: [i32; 4]`
-let a = x[0]; // a == 122
-let b = x[1]; // b == -68
-let c = x[2]; // c == 70
-let d = x[3]; // d == 32
+fn foo() -> () {
+    println!("Function returns no data");
+}
+fn bar() {
+    let x = ();
+    println!("This also returns no data");
+}
 ```
 
-This now gives us a good oppertunity to talk more about three new patterns.
-
-- Slice patterns `[comma_separated_patterns]` match arrays (and slices, more on
-  them later) and destructure them.
-- The rest pattern `..` matches zero or more unmatched elements in a slice
-  pattern (or in a tuple or tuple struct pattern which I'll introduce later).
-- The identifier pattern can be extended as `ident @ pattern` which binds the
-  value a pattern matches to a variable. This can be very useful with `..`, and
-  is the most common place you will see it being used.
+It is also possible to use a unit pattern to bind a unit value. This doesn't
+seem very useful, and on its own it isn't and is equivalent to using a wildcard
+binding, but you _can_ do it if you really want. There may be some niche case
+in more advanced patterns where `()` is desirable over `_`, I'm not sure though.
 
 ```rust
-let [a, b, c, d] = x; // a == 122, b == -68, c == 70, d == 32
-let [a, bc @ .., d] = x; // a == 122, bc == [-68, 70], d == 32
-let abcd @ [_, b, _, d] = x; // abcd == [122, -68, 70, 32], b == -68, d == 32
+// these lines are equivalent
+let () = ();
+let _ = ();
 ```
 
-### Tuples
+The final type in the above list is `!`, the "Never" type. It is a type with
+zero values that cannot be constructed. Because of this, Rust can coerce it into
+any other type. This is the type returned by control like `return`, `break`, and
+`continue`, by functions like `std::process::exit` which get the operating
+system to terminate the program, and by infinite loops or other similar non
+returning structures.
 
-Tuples allow you to store a sequence of different types in memory, though Rust
-may place padding between them or change their in memory order according to
-arcane rules known as the ["default representation"][repr]. `(i32, char)` is a
-sequence of a 32-bit integer and a unicode scalar character (UTF-32). You can
-access the parts of a tuple through numeric field access starting at 0.
+Any code that falls after a variable with the Never type is initialised is
+unreachable, because the compiler knows it's actually impossible to do that
+initialisation.
 
 ```rust
-let x = (2503, 'B', 12.5); // infers `x: (i32, char, f32)`
-let a = x.0; // a == 2503
-let b = x.1; // b == 'B'
-let c = x.2; // c == 12.5
+// This `x` is an i32, because the loop breaks with a value of 12.
+let x = loop {
+    break 12;
+};
+// This `y` is a `!`, because the loop never terminates.
+let y = loop { };
+// All code after the above is unreachable, but this would also have the type `!`
+let z = std::process::exit(0);
+// Because they can't be constructed, it's fine to coerce a `!` type to anything
+let a_number: i32 = z;
 ```
 
-Only one new pattern to learn this time
+## Arrays
 
-- Tuple patterns match tuple values and destructure them.
-
-But you can use the rest pattern with a tuple!
+If you want to store multiple of the same type in sequence (directly adjacent)
+in memory, you can use an array! Arrays have a fixed size known at compile time,
+and their size will be the size of the type stored in the array, multiplied by
+the number of elements in the array.
 
 ```rust
-let (a, b, c) = x; // a == 2503, b == 'B', c == 12.5
-let (a, ..) = x; // a = 2503
+let a: [i32; 4] = [12, -8, 92, 3];
+let b: [char; 3] = ['r', 'f', 'd'];
+let c = [true, false, false, true, false]; // infers [bool; 5]
 ```
+
+If you want to access the values in an array, you can index into it.
+
+```rust
+let a: [i32; 4] = [12, -8, 92, 3];
+let p = a[0]; // p = 12
+let q = a[1]; // q = -8
+let r = a[2]; // r = 92
+let s = a[3]; // s = 3
+```
+
+There is also a pattern we can use that allows us to destructure an array. This
+is called a slice pattern.
+
+```rust
+let a: [i32; 4] = [12, -8, 92, 3];
+let [p, q, r, s] = a; // slice pattern, p = 12, q = -8, r = 92, s = 3
+```
+
+Each of the identifiers inside the slice pattern is another pattern, which lets
+you ignore some elements in an array using the wildcard pattern.
+
+```rust
+let b: [char; 3] = ['r', 'f', 'd'];
+let [t, _, u] = b; // t = 'r', u = 'd'
+```
+
+There is also the "rest" pattern, which will match a sequence of zero or more
+values that are not otherwise bound within the slice pattern.
+
+```rust
+let c = [true, false, false, true, false];
+let [v, .., w] = c; // v = true, w = false
+```
+
+This is also a good time to introduce an extension to the identifier pattern. If
+you use the form `identifier @ pattern`, then instead of binding a single value,
+the value that matches the entier pattern will be bound to the identifier.
+This is very useful with the rest pattern as it allows you to create a new array
+from a subset of the source array.
+
+```rust
+let d = ['H', 'e', 'l', 'l', 'o'];
+let [head, tail @ ..] = d; // head = 'H', tail = ['e', 'l', 'l', 'o']
+let [mid @ .., _] = tail; // mid = ['e', 'l', 'l']
+```
+
+## Tuples
+
+If you want to group together multiple different types into a single type, the
+simplest way to do it is with a tuple! Like arrays, these must have a fixed
+number of elements. Unlike arrays, each element has it's own type.
+
+```rust
+let a: (i32, char) = (12, 'C');
+let b = (false, 12.5, ()); // infers type `(bool, f64, ())`
+```
+
+Values inside a tuple can be accessed using numeric field accessors.
+
+```rust
+let a = (12, 'C', false, 12.5);
+let p = a.0; // p = 12
+let q = a.1; // q = 'C'
+let r = a.2; // r = false
+let s = a.3; // s = 12.5
+```
+
+There is also a pattern that allows us to destructure a tuple, called a tuple
+pattern!
+
+```rust
+let a = (12, 'C', false, 12.5);
+let (p, q, r, s) = a; // p = 12, q = 'C', r = false, s = 12.5
+```
+
+As with arrays, this pattern allows us to use other patterns like rest and
+wildcard inside of it.
+
+```rust
+let a = (12, 'C', false, 12.5);
+let (head, ..) = a; // head = 12
+let (.., penultimate, _) = a; // penultimate = false
+```
+
+Unlike with slices patterns however, you cannot use the `ident @ ..` syntax,
+probably while arrays are sequential in memory and easy to copy, tuples can have
+their fields re-ordered and padding inserted between them according to
+arcane rules known as the ["default representation"][repr], meaning a trivial
+"sub-tuple" is not guarunteed to exist in the way that a subsection of an array
+is.
+
+## References
+
+## Structs
+
+## Generic Types
+
+## Generic Lifetimes
+
+---
+
+# Old Article Pending Rewrite (Stop Reading Here)
 
 ### Slices
 
@@ -732,3 +902,4 @@ some other lifetime (which are almost always anonymous), then you will have a
 `HoldsAReference<'some_unnamed_anonymous_lifetime>`.
 
 [repr]: https://doc.rust-lang.org/reference/type-layout.html#the-default-representation
+[unicode]: https://www.unicode.org/glossary/#unicode_scalar_value

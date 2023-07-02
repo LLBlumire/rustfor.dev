@@ -2,6 +2,7 @@ import "~/globals.css";
 import "katex/dist/katex.min.css";
 import { Fira_Sans, Fira_Code, Atkinson_Hyperlegible } from "next/font/google";
 import { Navbar } from "~/components/Navbar";
+import { Metadata } from "next";
 
 const sans = Fira_Sans({
   subsets: ["latin"],
@@ -19,10 +20,11 @@ const heading = Atkinson_Hyperlegible({
   variable: "--font-heading",
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Rust For Developers",
   description:
     "A Rust (programming language) course, not for beginners, but for mid and senior level engineers who already know a handful of languages. If your company is adopting Rust, and you want to be able to help fix bugs and do code reviews, this is the guide for you.",
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({
